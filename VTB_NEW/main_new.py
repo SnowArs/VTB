@@ -62,7 +62,8 @@ full_list_of_securities = list_of_USD_securities + list_of_EUR_securities + list
 
 # удаление лишних элементов
 for index, row in df.iterrows():
-    if (df['Код инструмента'][index] not in full_list_of_securities) or (isinstance(df['Валюта'][index], str) == False):
+    if (df['Код инструмента'][index] not in full_list_of_securities) or (isinstance(df['Валюта'][index], str) == False)\
+            or (df['Тип сделки'][index] != 'Клиентская'):
         df.drop(index, inplace=True)
 # группировка
 df = df.groupby(['Дата вал.', 'Код инструмента', 'B/S', 'Валюта']).agg(
