@@ -45,6 +45,7 @@ def p_l_calc(number, corrected_profit, p_l_usd, p_l_for_percentage_usd):
 
 
 # инструменты по типам
+
 def creating_list_by_currency(pattern, currency):
     lis_by = df.loc[((df['Код инструмента'].str.contains(pattern, regex=True))
                      & (df['Тип сделки'].str.contains('Клиентская'))
