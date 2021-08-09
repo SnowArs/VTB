@@ -8,39 +8,27 @@ warnings.filterwarnings('ignore')
 import os.path
 
 
-def p_l_calc(number, corrected_profit, p_l_usd, p_l_for_percentage_usd):
-    if number == 0:
-        prof_loss = df_for_particular_security['RUB_sum'][index] - sale_volume * \
-                    df_for_particular_security['ROE'][index_arr[0]] * df_for_particular_security['Price'][index_arr[0]]
-        # corrected_profit = check_ndfl(prof_loss) + corrected_profit  # check NDFL
-        prof_loss_usd = df_for_particular_security['Sum'][index] - sale_volume * \
-                        df_for_particular_security['Price'][index_arr[0]] - \
-                        (prof_loss - check_ndfl(prof_loss)) / df_for_particular_security['ROE'][index]
-        p_l_for_percentage_usd = sale_volume * df_for_particular_security['Price'][index_arr[0]] + \
-                                 p_l_for_percentage_usd
-    elif number == 1:
-        prof_loss = (sale_volume + close) * df_for_particular_security['ROE'][index] * \
-                    df_for_particular_security['Price'][index] - \
-                    (sale_volume + close) * df_for_particular_security['ROE'][buy_ind] * \
-                    df_for_particular_security['Price'][buy_ind]
-        # corrected_profit = check_ndfl(prof_loss) + corrected_profit
-        prof_loss_usd = (sale_volume + close) * df_for_particular_security['Price'][index] - (sale_volume + close) \
-                        * df_for_particular_security['Price'][buy_ind] - \
-                        (prof_loss - check_ndfl(prof_loss)) / df_for_particular_security['ROE'][index]
-        p_l_for_percentage_usd = (sale_volume + close) * df_for_particular_security['Price'][index_arr[0]] + \
-                                 p_l_for_percentage_usd
+def profit_loss_calculation(df_, option, corrected_profit, p_l_usd, p_l_for_percentage_usd):
+    if option == 0:
+        prof_loss_rur = df_['RUB_sum'][index] - sale_volume * df_['ROE'][index_arr[0]] * df_['Price'][index_arr[0]]
+        prof_loss_usd = df_['Sum'][index] - sale_volume * df_['Price'][index_arr[0]] - \
+                        ndfl(prof_loss_rur) / df_['ROE'][index]
+        p_l_for_percentage_usd = sale_volume * df_['Price'][index_arr[0]] + p_l_for_percentage_usd
+    elif option == 1:
+        prof_loss_rur = (sale_volume + close) * df_['ROE'][index] * df_['Price'][index] - \
+                    (sale_volume + close) * df_['ROE'][buy_ind] * df_['Price'][buy_ind]
+        prof_loss_usd = (sale_volume + close) * df_['Price'][index] - (sale_volume + close) \
+                        * df_['Price'][buy_ind] - ndfl(prof_loss_rur) / df_['ROE'][index]
+        p_l_for_percentage_usd = (sale_volume + close) * df_['Price'][index_arr[0]] + p_l_for_percentage_usd
     else:
-        prof_loss = buy_arr[i] * df_for_particular_security['ROE'][index] * df_for_particular_security['Price'][index] - \
-                    buy_arr[i] * df_for_particular_security['ROE'][buy_ind] * df_for_particular_security['Price'][
-                        buy_ind]
-        # corrected_profit = check_ndfl(prof_loss) + corrected_profit
-        prof_loss_usd = buy_arr[i] * df_for_particular_security['Price'][index] - buy_arr[i] * \
-                        df_for_particular_security['Price'][buy_ind] - \
-                        (prof_loss - check_ndfl(prof_loss)) / df_for_particular_security['ROE'][index]
-        p_l_for_percentage_usd = buy_arr[i] * df_for_particular_security['Price'][index_arr[0]] + p_l_for_percentage_usd
-    corrected_profit = check_ndfl(prof_loss) + corrected_profit
+        prof_loss_rur = buy_arr[i] * df_['ROE'][index] * df_['Price'][index] - \
+                    buy_arr[i] * df_['ROE'][buy_ind] * df_['Price'][buy_ind]
+        prof_loss_usd = buy_arr[i] * df_['Price'][index] - buy_arr[i] * df_['Price'][buy_ind] - \
+                        ndfl(prof_loss_rur) / df_['ROE'][index]
+        p_l_for_percentage_usd = buy_arr[i] * df_['Price'][index_arr[0]] + p_l_for_percentage_usd
+    corrected_profit = (prof_loss_rur - ndfl(prof_loss_rur)) + corrected_profit
     p_l_usd = prof_loss_usd + p_l_usd
-    #    print(round(prof_loss, 1), round(corrected_profit, 1), round(p_l_usd, 1), round(p_l_for_percentage_usd, 1))
+    #    print(round(prof_loss_rur, 1), round(corrected_profit, 1), round(p_l_usd, 1), round(p_l_for_percentage_usd, 1))
     return corrected_profit, p_l_usd, p_l_for_percentage_usd
 
 
@@ -54,17 +42,9 @@ def creating_list_by_currency(pattern, currency):
 
 
 df = pd.read_excel('сделки_ВТБ.xls', sheet_name='DealOwnsReport', header=3)
+df = df.loc[df['Тип сделки'] == 'Клиентская'].reset_index(drop=True)
+full_list_of_securities = df['Код инструмента'].unique().tolist()
 
-list_of_USD_securities = creating_list_by_currency('_SPB$', 'USD')
-list_of_EUR_securities = creating_list_by_currency('_SPB$', 'EUR')
-list_of_RUR_securities = creating_list_by_currency('\S', 'RUR')
-full_list_of_securities = list_of_USD_securities + list_of_EUR_securities + list_of_RUR_securities
-
-# удаление лишних элементов
-for index, row in df.iterrows():
-    if (df['Код инструмента'][index] not in full_list_of_securities) or (isinstance(df['Валюта'][index], str) == False)\
-            or (df['Тип сделки'][index] != 'Клиентская'):
-        df.drop(index, inplace=True)
 # группировка
 df = df.groupby(['Дата вал.', 'Код инструмента', 'B/S', 'Валюта']).agg(
     Price=pd.NamedAgg(column='Цена', aggfunc='mean'),
@@ -103,8 +83,7 @@ df_roe.to_csv('roe_table.csv', index=False)
 df['RUB_sum'] = df['Sum'] * df['ROE']
 df = df.astype({'ROE': 'float', 'RUB_sum': 'float'})
 
-
-full_prof_loss = 0
+full_prof_loss_rur = 0
 full_prof_loss_usd = 0
 full_profit_loss_percentage = 0
 Full_potential_profit = 0
@@ -116,10 +95,10 @@ mytable = PrettyTable()
 mytable_rus = PrettyTable()
 mytable_rus.hrules = ALL
 # имена полей таблицы
-field_names = ['Тикер', 'Куплено', 'Продано', 'Остаток', 'заф прибыль РУБ', 'Прибыль в USD', 'Прибыль в usd в %',
+field_names = ['Тикер', 'Куплено', 'Продано', 'Остаток', 'НДФЛ, РУБ', 'Прибыль в USD', 'Прибыль в usd в %',
                'средняя цена', 'текущая цена', 'потенциальная прибыль', 'прибыль всех бумаг']
 mytable.field_names = field_names
-mytable_rus.field_names = field_names[0:5] + field_names[7:]
+mytable_rus.field_names = field_names[0:4] + ['заф прибыль РУБ'] + field_names[7:]
 
 for paper in full_list_of_securities:
     df_for_particular_security = df.loc[df['Код инструмента'] == paper].reset_index(drop=True)
@@ -134,11 +113,11 @@ for paper in full_list_of_securities:
     profit_for_percentage_calculation_usd = 0
     total_profit_rus = 0
     total_profit = 0
-
+    # указание на ошибку если остаток акций отрицательный
     if ticker.outstanding_volumes < 0:
         print(f'похоже в позиции {ticker.name} проблемы с вычислениями, так как остаток отрицательный')
         continue
-
+    # обработка рублевых бумаг
     if ticker.currency == 'RUR':
         if ticker.length > 4:
             board = 'TQCB'
@@ -179,9 +158,9 @@ for paper in full_list_of_securities:
                              int(profit_for_outstanding_volumes_rus),
                              int(total_profit_rus)])
     # print(f'по рублевым бумагам прибыль: {total_profit_rus}')
-
+    # блок вычисления прибыли и убытков по бумаге в USD и EUR
     else:
-        # блок вычисления прибыли и убытков по бумаге в USD и EUR
+
         for index, deal in df_for_particular_security.iterrows():
             if deal['B/S'] == 'Покупка':
                 buy_arr.append(deal['Volume'])
@@ -191,28 +170,31 @@ for paper in full_list_of_securities:
                 sale_volume = deal['Volume']
                 buy_volume = buy_arr[0]
                 close = buy_volume - sale_volume
-
                 if close == 0:
                     corrected_profit, profit_in_usd, profit_for_percentage_calculation_usd \
-                        = p_l_calc(0, corrected_profit, profit_in_usd, profit_for_percentage_calculation_usd)
+                        = profit_loss_calculation(df_for_particular_security, 0, corrected_profit, profit_in_usd,
+                                     profit_for_percentage_calculation_usd)
                     buy_arr.pop(0)
                     index_arr.pop(0)
 
                 elif close > 0:
                     corrected_profit, profit_in_usd, profit_for_percentage_calculation_usd \
-                        = p_l_calc(0, corrected_profit, profit_in_usd, profit_for_percentage_calculation_usd)
+                        = profit_loss_calculation(df_for_particular_security, 0, corrected_profit, profit_in_usd,
+                                     profit_for_percentage_calculation_usd)
                     buy_arr[0] = buy_arr[0] - sale_volume
                 else:
                     for i, buy_ind in enumerate(index_arr):
                         if i == 0:
                             corrected_profit, profit_in_usd, profit_for_percentage_calculation_usd \
-                                = p_l_calc(1, corrected_profit, profit_in_usd, profit_for_percentage_calculation_usd)
+                                = profit_loss_calculation(df_for_particular_security, 1, corrected_profit, profit_in_usd,
+                                     profit_for_percentage_calculation_usd)
                             close_diff = close
                             index_to_del.append(i)
                         else:
                             diff = buy_arr[i] + close_diff
                             corrected_profit, profit_in_usd, profit_for_percentage_calculation_usd \
-                                = p_l_calc(2, corrected_profit, profit_in_usd, profit_for_percentage_calculation_usd)
+                                = profit_loss_calculation(df_for_particular_security, 2, corrected_profit, profit_in_usd,
+                                     profit_for_percentage_calculation_usd)
                             if diff < 0:
                                 close_diff = diff
                                 index_to_del.append(i)
@@ -239,7 +221,7 @@ for paper in full_list_of_securities:
             try:
                 profit_for_outstanding_volumes = (get_current_price(ticker.name) - average_price_usd) \
                                                  * ticker.outstanding_volumes
-                total_profit = int(profit_in_usd + profit_for_outstanding_volumes)
+                total_profit = int(profit_in_usd + profit_for_outstanding_volumes - ndfl(profit_for_outstanding_volumes))
                 current_price = round(get_current_price(ticker.name), 1)
             except IndexError:
                 profit_for_outstanding_volumes = 'N/A'
