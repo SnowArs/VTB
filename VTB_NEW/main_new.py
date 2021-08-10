@@ -8,13 +8,19 @@ import os.path
 warnings.filterwarnings('ignore')
 
 
-def profit_loss_calculation(df_, option, ndfl_, p_l_usd, p_l_for_percentage_usd):
-    if option == 0:
+def profit_loss_calculation(list_):
+    df_ = list_[0]
+    option_ = list_[1]
+    ndfl_ = list_[2]
+    p_l_usd = list_[3]
+    p_l_for_percentage_usd = list_[4]
+
+    if option_ == 0:
         prof_loss_rur = df_['RUB_sum'][index] - sale_volume * df_['ROE'][index_arr[0]] * df_['Price'][index_arr[0]]
         prof_loss_usd = df_['Sum'][index] - sale_volume * df_['Price'][index_arr[0]] - \
                         ndfl_func(prof_loss_rur) / df_['ROE'][index]
         p_l_for_percentage_usd = sale_volume * df_['Price'][index_arr[0]] + p_l_for_percentage_usd
-    elif option == 1:
+    elif option_ == 1:
         prof_loss_rur = (sale_volume + close) * df_['ROE'][index] * df_['Price'][index] - \
                         (sale_volume + close) * df_['ROE'][buy_ind] * df_['Price'][buy_ind]
         prof_loss_usd = (sale_volume + close) * df_['Price'][index] - (sale_volume + close) \
@@ -132,31 +138,32 @@ for security in full_list_of_securities:
                 sale_volume = deal['Volume']
                 buy_volume = buy_arr[0]
                 close = buy_volume - sale_volume
+                option = 0
+                list_for_prof_los_func = [df_for_particular_security, option, ndfl, profit_in_usd,
+                                                  profit_for_percentage_calculation_usd]
                 if close == 0:
                     ndfl, profit_in_usd, profit_for_percentage_calculation_usd \
-                        = profit_loss_calculation(df_for_particular_security, 0, ndfl, profit_in_usd,
-                                                  profit_for_percentage_calculation_usd)
+                        = profit_loss_calculation(list_for_prof_los_func)
                     buy_arr.pop(0)
                     index_arr.pop(0)
 
                 elif close > 0:
                     ndfl, profit_in_usd, profit_for_percentage_calculation_usd \
-                        = profit_loss_calculation(df_for_particular_security, 0, ndfl, profit_in_usd,
-                                                  profit_for_percentage_calculation_usd)
+                        = profit_loss_calculation(list_for_prof_los_func)
                     buy_arr[0] = buy_arr[0] - sale_volume
                 else:
                     for i, buy_ind in enumerate(index_arr):
                         if i == 0:
+                            option = 1
                             ndfl, profit_in_usd, profit_for_percentage_calculation_usd \
-                                = profit_loss_calculation(df_for_particular_security, 1, ndfl, profit_in_usd,
-                                                          profit_for_percentage_calculation_usd)
+                                = profit_loss_calculation(list_for_prof_los_func)
                             close_diff = close
                             index_to_del.append(i)
                         else:
                             diff = buy_arr[i] + close_diff
+                            option = 2
                             ndfl, profit_in_usd, profit_for_percentage_calculation_usd \
-                                = profit_loss_calculation(df_for_particular_security, 2, ndfl, profit_in_usd,
-                                                          profit_for_percentage_calculation_usd)
+                                = profit_loss_calculation(list_for_prof_los_func)
                             if diff < 0:
                                 close_diff = diff
                                 index_to_del.append(i)
