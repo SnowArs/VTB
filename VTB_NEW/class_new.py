@@ -4,6 +4,7 @@ import math
 import apimoex
 import pandas as pd
 
+
 class Calculations:
 
     def get_current_price_usd(self):
@@ -27,6 +28,36 @@ class Calculations:
         # print(cur_price)
         return cur_price * ratio
 
+    def rub_securities_processing(self, df_):
+        if self.length > 4:
+            board = 'TQCB'
+            market = 'bonds'
+            ratio = 10
+        else:
+            board = 'TQBR'
+            market = 'shares'
+            ratio = 1
+
+        buy_sum_for_rub_securities = df_.loc[df_['B/S'] == 'Покупка', 'RUB_sum'].sum()
+        sell_sum_for_rub_securities = df_.loc[df_['B/S'] == 'Продажа', 'RUB_sum'].sum()
+        average_buy = buy_sum_for_rub_securities / self.total_buy
+        average_sell = sell_sum_for_rub_securities / self.total_sell
+        current_price = self.get_current_price_rur(board, market, ratio)
+        if self.outstanding_volumes == 0:
+            prof_loss_for_sold_securities = sell_sum_for_rub_securities - buy_sum_for_rub_securities
+            profit_for_outstanding_volumes = 0
+        elif math.isnan(average_sell):
+            prof_loss_for_sold_securities = 0
+            average_sell = 0
+            profit_for_outstanding_volumes = (current_price - average_buy) * self.outstanding_volumes
+        else:
+            prof_loss_for_sold_securities = sell_sum_for_rub_securities - self.total_sell * average_buy
+            profit_for_outstanding_volumes = (current_price - average_buy) * self.outstanding_volumes
+
+        total_profit = prof_loss_for_sold_securities + profit_for_outstanding_volumes
+
+        return prof_loss_for_sold_securities, average_buy, profit_for_outstanding_volumes, total_profit
+
 
 class Ticker(Calculations):
     def __init__(self, security_df):
@@ -43,7 +74,7 @@ class Ticker(Calculations):
 
     def stock_name(self):
         if self.currency != 'RUR':
-            if self.raw_name[-4:] == '_SPB':
+            if (self.raw_name[-4:] == '_SPB') | (self.raw_name[-3:] == '-RM'):
                 stock_name = self.raw_name[:-4]
         else:
             stock_name = self.raw_name
