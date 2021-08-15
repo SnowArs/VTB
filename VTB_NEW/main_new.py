@@ -8,28 +8,29 @@ import os.path
 warnings.filterwarnings('ignore')
 
 
-# def profit_loss_calculation(df_, option, ndfl_, p_l_usd, p_l_for_percentage_usd):
-#     if option == 0:
-#         prof_loss_rur = df_['RUB_sum'][index] - sale_volume * df_['ROE'][index_arr[0]] * df_['Price'][index_arr[0]]
-#         prof_loss_usd = df_['Sum'][index] - sale_volume * df_['Price'][index_arr[0]] - \
-#                         ndfl_func(prof_loss_rur) / df_['ROE'][index]
-#         p_l_for_percentage_usd = sale_volume * df_['Price'][index_arr[0]] + p_l_for_percentage_usd
-#     elif option == 1:
-#         prof_loss_rur = (sale_volume + close) * df_['ROE'][index] * df_['Price'][index] - \
-#                         (sale_volume + close) * df_['ROE'][buy_ind] * df_['Price'][buy_ind]
-#         prof_loss_usd = (sale_volume + close) * df_['Price'][index] - (sale_volume + close) \
-#                         * df_['Price'][buy_ind] - ndfl_func(prof_loss_rur) / df_['ROE'][index]
-#         p_l_for_percentage_usd = (sale_volume + close) * df_['Price'][index_arr[0]] + p_l_for_percentage_usd
-#     else:
-#         prof_loss_rur = buy_arr[i] * df_['ROE'][index] * df_['Price'][index] - \
-#                         buy_arr[i] * df_['ROE'][buy_ind] * df_['Price'][buy_ind]
-#         prof_loss_usd = buy_arr[i] * df_['Price'][index] - buy_arr[i] * df_['Price'][buy_ind] - \
-#                         ndfl_func(prof_loss_rur) / df_['ROE'][index]
-#         p_l_for_percentage_usd = buy_arr[i] * df_['Price'][index_arr[0]] + p_l_for_percentage_usd
-#     ndfl_ = ndfl_func(prof_loss_rur) + ndfl_
-#     p_l_usd = prof_loss_usd + p_l_usd
-#     #    print(round(prof_loss_rur, 1), round(ndfl_, 1), round(p_l_usd, 1), round(p_l_for_percentage_usd, 1))
-#     return ndfl_, p_l_usd, p_l_for_percentage_usd
+def profit_loss_calculation(df_, option, ndfl_, p_l_usd, p_l_for_percentage_usd, index, sale_volume, index_arr,
+                            close, buy_ind, buy_arr , i):
+    if option == 0:
+        prof_loss_rur = df_['RUB_sum'][index] - sale_volume * df_['ROE'][index_arr[0]] * df_['Price'][index_arr[0]]
+        prof_loss_usd = df_['Sum'][index] - sale_volume * df_['Price'][index_arr[0]] - \
+                        ndfl_func(prof_loss_rur) / df_['ROE'][index]
+        p_l_for_percentage_usd = sale_volume * df_['Price'][index_arr[0]] + p_l_for_percentage_usd
+    elif option == 1:
+        prof_loss_rur = (sale_volume + close) * df_['ROE'][index] * df_['Price'][index] - \
+                        (sale_volume + close) * df_['ROE'][buy_ind] * df_['Price'][buy_ind]
+        prof_loss_usd = (sale_volume + close) * df_['Price'][index] - (sale_volume + close) \
+                        * df_['Price'][buy_ind] - ndfl_func(prof_loss_rur) / df_['ROE'][index]
+        p_l_for_percentage_usd = (sale_volume + close) * df_['Price'][index_arr[0]] + p_l_for_percentage_usd
+    else:
+        prof_loss_rur = buy_arr[i] * df_['ROE'][index] * df_['Price'][index] - \
+                        buy_arr[i] * df_['ROE'][buy_ind] * df_['Price'][buy_ind]
+        prof_loss_usd = buy_arr[i] * df_['Price'][index] - buy_arr[i] * df_['Price'][buy_ind] - \
+                        ndfl_func(prof_loss_rur) / df_['ROE'][index]
+        p_l_for_percentage_usd = buy_arr[i] * df_['Price'][index_arr[0]] + p_l_for_percentage_usd
+    ndfl_ = ndfl_func(prof_loss_rur) + ndfl_
+    p_l_usd = prof_loss_usd + p_l_usd
+    #    print(round(prof_loss_rur, 1), round(ndfl_, 1), round(p_l_usd, 1), round(p_l_for_percentage_usd, 1))
+    return ndfl_, p_l_usd, p_l_for_percentage_usd
 
 
 def filling_roe(_df, date_column, currency_column):
@@ -48,8 +49,8 @@ def filling_roe(_df, date_column, currency_column):
             print('ROE по всем датам проставленно')
         else:
             for ind, line in _df.loc[_df['ROE'].isna()].iterrows():
-                _df['ROE'][ind] = fill_roe(line[date_column], line[currency_column], _df[date_column].min())
-
+                _df['ROE'][ind] = fill_roe(line[date_column], line[currency_column], _df.iloc[:, date_column].min())
+                print(ind)
     else:
         for ind, line in _df.iterrows():
             _df = pd.concat([_df, pd.DataFrame(columns=['ROE'])])
@@ -63,9 +64,10 @@ def filling_roe(_df, date_column, currency_column):
     _df = _df.astype({'ROE': 'float', 'RUB_sum': 'float'})
     return _df
 
+
 def main():
-    df = df.loc[df['Тип сделки'] == 'Клиентская'].reset_index(drop=True)
     df = pd.read_excel('сделки_ВТБ.xls', sheet_name='DealOwnsReport', header=3)
+    df = df.loc[df['Тип сделки'] == 'Клиентская'].reset_index(drop=True)
     full_list_of_securities = df['Код инструмента'].unique().tolist()
 
     # группировка
@@ -78,7 +80,6 @@ def main():
 
     df.reset_index(drop=False, inplace=True)
     # создание двух новых колонок с заполнением
-
 
     df = filling_roe(df, 0, 3)
     full_ndfl = 0

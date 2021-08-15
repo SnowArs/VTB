@@ -12,8 +12,7 @@
 # df = pd.read_csv('U3557843_20210101_20210811.csv', encoding='utf-8')
 # input()
 import pandas as pd
-
-# df = pd.DataFrame()
+from main_new import filling_roe
 import csv
 
 with open('U3557843_20210101_20210811.csv', encoding='utf-8', newline='') as File:
@@ -27,13 +26,9 @@ with open('U3557843_20210101_20210811.csv', encoding='utf-8', newline='') as Fil
         elif 'Сделки' in row and not first:
             if not (set(filter_) & set(row)):
                 df.loc[len(df)] = row
-            # if 'Total' not in row:
-            #     if 'SubTotal' not in row:
-            #         if 'Header' not in row:
-            #             df.loc[len(df)] = row
-
 
 df['date']=df['Дата/Время'].str.split(',').str.get(0)
+df['date'] = pd.to_datetime(df['date'])
 df['B/S'] = df['Код'].str.split(';').str.get(0)
 df = df.astype({'Цена транзакции': 'float', 'Комиссия/плата': 'float', 'Выручка': 'float'})
 df = df.groupby(['date', 'Символ', 'B/S', 'Валюта']).agg(
@@ -43,4 +38,5 @@ df = df.groupby(['date', 'Символ', 'B/S', 'Валюта']).agg(
     Sum=pd.NamedAgg(column='Выручка', aggfunc='sum')
 )
 df.reset_index(drop=False, inplace=True)
+df = filling_roe(df, 0, 3)
 input()
