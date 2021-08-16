@@ -4,6 +4,7 @@ from prettytable import ALL
 from moex import *
 import class_new
 import os.path
+from func import culc
 
 warnings.filterwarnings('ignore')
 
@@ -132,7 +133,8 @@ def main():
 
         # блок вычисления прибыли и убытков по бумаге в USD и EUR
         else:
-            for index, deal in df_for_particular_security.iterrows():
+            df = culc(ticker)
+            for index, deal in ticker.df.iterrows():
                 if deal['B/S'] == 'Покупка':
                     buy_arr.append(deal['Volume'])
                     index_arr.append(index)
