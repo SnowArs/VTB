@@ -8,6 +8,7 @@ import datetime as dt
 
 
 def get_current_price_rur(ticker, board, market, ratio):
+    print('get_current_price_rur')
     with requests.Session() as session:
         data = apimoex.get_board_history(session, ticker, market=market, board=board)
         if not data:
@@ -22,6 +23,7 @@ def get_current_price_rur(ticker, board, market, ratio):
 
 # вычисление котировки на данный момент
 def get_current_price(symbol):
+    print('get_current_price')
     ticker = yf.Ticker(symbol)
     todays_data = ticker.history(period='1d')
     if math.isnan(todays_data['Close'][0]):
@@ -33,6 +35,8 @@ def get_current_price(symbol):
 
 # функция подстановки ROE в таблицу
 def fill_roe(roe_date, currency, date_min):
+    print('fill_roe')
+    date_min = date_min -dt.timedelta(days=1) * 10
     def roe_calc(date=roe_date):
         date_max = dt.datetime.now()
         roe_date_mod = pd.to_datetime(date, format="%Y-%m-%d", errors='coerce')
