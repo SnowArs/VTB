@@ -1,37 +1,73 @@
 import warnings
-from prettytable import PrettyTable
-from prettytable import ALL
 from moex import *
 import class_new
 import os.path
-from func import culc
+from func import culc, outstanding_volume_price, rub_securities_processing
 
 warnings.filterwarnings('ignore')
 
 
-def profit_loss_calculation(df_, option, ndfl_, p_l_usd, p_l_for_percentage_usd, index, sale_volume, index_arr,
-                            close, buy_ind, buy_arr , i):
-    if option == 0:
-        prof_loss_rur = df_['RUB_sum'][index] - sale_volume * df_['ROE'][index_arr[0]] * df_['Price'][index_arr[0]]
-        prof_loss_usd = df_['Sum'][index] - sale_volume * df_['Price'][index_arr[0]] - \
-                        ndfl_func(prof_loss_rur) / df_['ROE'][index]
-        p_l_for_percentage_usd = sale_volume * df_['Price'][index_arr[0]] + p_l_for_percentage_usd
-    elif option == 1:
-        prof_loss_rur = (sale_volume + close) * df_['ROE'][index] * df_['Price'][index] - \
-                        (sale_volume + close) * df_['ROE'][buy_ind] * df_['Price'][buy_ind]
-        prof_loss_usd = (sale_volume + close) * df_['Price'][index] - (sale_volume + close) \
-                        * df_['Price'][buy_ind] - ndfl_func(prof_loss_rur) / df_['ROE'][index]
-        p_l_for_percentage_usd = (sale_volume + close) * df_['Price'][index_arr[0]] + p_l_for_percentage_usd
-    else:
-        prof_loss_rur = buy_arr[i] * df_['ROE'][index] * df_['Price'][index] - \
-                        buy_arr[i] * df_['ROE'][buy_ind] * df_['Price'][buy_ind]
-        prof_loss_usd = buy_arr[i] * df_['Price'][index] - buy_arr[i] * df_['Price'][buy_ind] - \
-                        ndfl_func(prof_loss_rur) / df_['ROE'][index]
-        p_l_for_percentage_usd = buy_arr[i] * df_['Price'][index_arr[0]] + p_l_for_percentage_usd
-    ndfl_ = ndfl_func(prof_loss_rur) + ndfl_
-    p_l_usd = prof_loss_usd + p_l_usd
-    #    print(round(prof_loss_rur, 1), round(ndfl_, 1), round(p_l_usd, 1), round(p_l_for_percentage_usd, 1))
-    return ndfl_, p_l_usd, p_l_for_percentage_usd
+def main_func(full_list_of_securities, df, broker):
+    from prettytable import PrettyTable
+    from prettytable import ALL
+    full_ndfl = 0
+    full_prof_loss_usd = 0
+    full_potential_profit = 0
+    full_potential_profit_rus = 0
+    # сознадние таблицы вывода
+    mytable = PrettyTable()  # иностранные бумаги
+    mytable_rus = PrettyTable()
+    mytable_rus.hrules = ALL
+    # имена полей таблицы
+    field_names = ['Тикер', 'Куплено', 'Продано', 'Остаток', 'НДФЛ, РУБ', 'Прибыль в USD',
+                   'средняя цена', 'текущая цена', 'потенциальная прибыль', 'прибыль всех бумаг']
+    mytable.field_names = field_names
+    mytable_rus.field_names = field_names[0:4] + ['заф прибыль РУБ'] + field_names[7:]
+
+    for security in full_list_of_securities:
+        df_for_particular_security = df.loc[df.iloc[:, 1] == security].reset_index(drop=True)
+        ticker = class_new.Ticker(df_for_particular_security, broker)
+        # указание на ошибку если остаток акций отрицательный
+        if ticker.outstanding_volumes < 0:
+            print(f'похоже в позиции {ticker.name} проблемы с вычислениями, так как остаток отрицательный')
+            continue
+        # обработка рублевых бумаг
+        if ticker.currency == 'RUR':
+            ticker = rub_securities_processing(ticker)
+
+            mytable_rus.add_row([ticker.name,
+                                 ticker.total_buy,
+                                 ticker.total_sell,
+                                 ticker.outstanding_volumes,
+                                 int(ticker.prof_loss_for_sold_securities_rus),
+                                 ticker.current_price,
+                                 int(ticker.profit_for_outstanding_volumes_rus),
+                                 int(ticker.total_profit_rus)])
+
+        # блок вычисления прибыли и убытков по бумаге в USD и EUR
+        else:
+            # вычесление прибыли и убытков
+            ticker = culc(ticker)
+            # вычисление средней цены  оставшихся бумаг в рублях и валюте
+            ticker = outstanding_volume_price(ticker)
+            # заполнение таблицы
+            mytable.add_row([ticker.name,
+                             ticker.total_buy,
+                             ticker.total_sell,
+                             ticker.outstanding_volumes,
+                             int(ticker.ndfl),
+                             int(ticker.profit_in_usd),
+                             round(ticker.average_price_usd, 1),
+                             round(ticker.current_price, 1),
+                             round(ticker.profit_for_outstanding_volumes, 1),
+                             int(ticker.total_profit)])
+
+        full_ndfl = full_ndfl + ticker.ndfl
+        full_prof_loss_usd = full_prof_loss_usd + ticker.profit_in_usd
+        full_potential_profit = full_potential_profit + ticker.total_profit
+        full_potential_profit_rus = full_potential_profit_rus + ticker.total_profit_rus
+
+    return ticker, mytable, mytable_rus, full_ndfl, full_prof_loss_usd, full_potential_profit, full_potential_profit_rus
 
 
 def filling_roe(_df, date_column, currency_column):
@@ -56,8 +92,10 @@ def filling_roe(_df, date_column, currency_column):
         for ind, line in _df.iterrows():
             _df = pd.concat([_df, pd.DataFrame(columns=['ROE'])])
             _df['ROE'][line] = fill_roe(line[date_column], line[currency_column], _df.iloc[:, date_column].min())
-    df_roe = _df.loc[
-        (_df['ROE'] != 1) & (_df.iloc[:, date_column] < dt.datetime.today().strftime('%Y-%m-%d')), ['ROE_index', 'ROE']]
+    _df2 = _df.loc[(_df['ROE'] != 1) & (_df.iloc[:, date_column] < dt.datetime.today().strftime('%Y-%m-%d')),\
+                  ['ROE_index', 'ROE']]
+    _df2 = _df.drop_duplicates('ROE_index', ignore_index=True)
+    df_roe = df_roe.append(_df2)
     df_roe = df_roe.drop_duplicates('ROE_index', ignore_index=True)
     df_roe.to_csv('roe_table.csv', index=False)
 
@@ -83,161 +121,18 @@ def main():
     # создание двух новых колонок с заполнением
 
     df = filling_roe(df, 0, 3)
-    full_ndfl = 0
-    full_prof_loss_usd = 0
-    full_profit_loss_percentage = 0
-    Full_potential_profit = 0
-    Full_potential_profit_rus = 0
+    broker = 'VTB'
 
-    # сознадние таблицы вывода
-    mytable = PrettyTable()
-    # mytable.hrules = ALL
-    mytable_rus = PrettyTable()
-    mytable_rus.hrules = ALL
-    # имена полей таблицы
-    field_names = ['Тикер', 'Куплено', 'Продано', 'Остаток', 'НДФЛ, РУБ', 'Прибыль в USD', 'Прибыль в usd в %',
-                   'средняя цена', 'текущая цена', 'потенциальная прибыль', 'прибыль всех бумаг']
-    mytable.field_names = field_names
-    mytable_rus.field_names = field_names[0:4] + ['заф прибыль РУБ'] + field_names[7:]
+    ticker, mytable, mytable_rus, full_ndfl, full_prof_loss_usd, full_potential_profit, full_potential_profit_rus = \
+        main_func(full_list_of_securities, df, broker)
 
-    for security in full_list_of_securities:
-        df_for_particular_security = df.loc[df['Код инструмента'] == security].reset_index(drop=True)
-        ticker = class_new.Ticker(df_for_particular_security)
-        prof_loss_for_sold_securities = 0
-        buy_arr = []
-        index_arr = []
-        index_to_del = []
-        ndfl = 0
-        prof_loss_usd = 0
-        profit_in_usd = 0
-        profit_for_percentage_calculation_usd = 0
-        total_profit_rus = 0
-        total_profit = 0
-        # указание на ошибку если остаток акций отрицательный
-        if ticker.outstanding_volumes < 0:
-            print(f'похоже в позиции {ticker.name} проблемы с вычислениями, так как остаток отрицательный')
-            continue
-        # обработка рублевых бумаг
-        if ticker.currency == 'RUR':
-            prof_loss_for_sold_securities_rus, average_buy, profit_for_outstanding_volumes_rus, total_profit_rus = \
-                class_new.Calculations.rub_securities_processing(ticker, df_for_particular_security)
-            mytable_rus.add_row([ticker.name,
-                                 ticker.total_buy,
-                                 ticker.total_sell,
-                                 ticker.outstanding_volumes,
-                                 int(prof_loss_for_sold_securities_rus),
-                                 round(average_buy, 1),
-                                 current_price,
-                                 int(profit_for_outstanding_volumes_rus),
-                                 int(total_profit_rus)])
-
-        # блок вычисления прибыли и убытков по бумаге в USD и EUR
-        else:
-            df = culc(ticker)
-            for index, deal in ticker.df.iterrows():
-                if deal['B/S'] == 'Покупка':
-                    buy_arr.append(deal['Volume'])
-                    index_arr.append(index)
-                else:
-                    sale_volume = deal['Volume']
-                    buy_volume = buy_arr[0]
-                    close = buy_volume - sale_volume
-                    if close == 0:
-                        ndfl, profit_in_usd, profit_for_percentage_calculation_usd \
-                            = profit_loss_calculation(df_for_particular_security, 0, ndfl, profit_in_usd,
-                                                      profit_for_percentage_calculation_usd)
-                        buy_arr.pop(0)
-                        index_arr.pop(0)
-
-                    elif close > 0:
-                        ndfl, profit_in_usd, profit_for_percentage_calculation_usd \
-                            = profit_loss_calculation(df_for_particular_security, 0, ndfl, profit_in_usd,
-                                                      profit_for_percentage_calculation_usd)
-                        buy_arr[0] = buy_arr[0] - sale_volume
-                    else:
-                        for i, buy_ind in enumerate(index_arr):
-                            if i == 0:
-                                ndfl, profit_in_usd, profit_for_percentage_calculation_usd \
-                                    = profit_loss_calculation(df_for_particular_security, 1, ndfl, profit_in_usd,
-                                                              profit_for_percentage_calculation_usd)
-                                close_diff = close
-                                index_to_del.append(i)
-                            else:
-                                diff = buy_arr[i] + close_diff
-                                ndfl, profit_in_usd, profit_for_percentage_calculation_usd \
-                                    = profit_loss_calculation(df_for_particular_security, 2, ndfl, profit_in_usd,
-                                                              profit_for_percentage_calculation_usd)
-                                if diff < 0:
-                                    close_diff = diff
-                                    index_to_del.append(i)
-                                elif diff > 0:
-                                    buy_arr[i] = buy_arr[i] - diff
-                                    break
-                                else:
-                                    index_to_del.append(i)
-                                    break
-                        buy_arr = buy_arr[len(index_to_del):]
-                        index_arr = index_arr[len(index_to_del):]
-
-            # вычисление средней цены  оставшихся бумаг в рублях и валюте
-            sum_in_usd = 0
-            sum_in_rub = 0
-            if len(buy_arr) != 0:
-                for number, line in enumerate(index_arr):
-                    sum_in_usd = buy_arr[number] * df_for_particular_security['Price'][line] + sum_in_usd
-                    sum_in_rub = buy_arr[number] * df_for_particular_security['Price'][line] * \
-                                 df_for_particular_security['ROE'][line] + sum_in_rub
-                average_price_usd = sum_in_usd / sum(buy_arr)
-                average_price_rub = sum_in_rub / sum(buy_arr)
-
-                try:
-                    profit_for_outstanding_volumes = (get_current_price(ticker.name) - average_price_usd) \
-                                                     * ticker.outstanding_volumes
-                    total_profit = int(profit_in_usd + profit_for_outstanding_volumes - \
-                                       ndfl_func(profit_for_outstanding_volumes))
-                    current_price = round(get_current_price(ticker.name), 1)
-                except IndexError:
-                    profit_for_outstanding_volumes = 'N/A'
-                    total_profit = 'N/A'
-                    current_price = 'N/A'
-
-            else:
-                average_price_usd = 0
-                profit_for_outstanding_volumes = 0
-                average_price_rub = 0
-                total_profit = int(profit_in_usd)
-                current_price = 0
-
-            if profit_for_percentage_calculation_usd != 0:
-                p_l_for_percentage_calc = round(profit_in_usd / profit_for_percentage_calculation_usd * 100, 1)
-            else:
-                p_l_for_percentage_calc = round(profit_in_usd / 1 * 100, 1)
-
-            mytable.add_row([ticker.name,
-                             ticker.total_buy,
-                             ticker.total_sell,
-                             ticker.outstanding_volumes,
-                             int(ndfl),
-                             int(profit_in_usd),
-                             p_l_for_percentage_calc,
-                             round(average_price_usd, 1),
-                             current_price,
-                             round(profit_for_outstanding_volumes, 1),
-                             int(total_profit)])
-
-        full_ndfl = full_ndfl + ndfl
-        full_prof_loss_usd = full_prof_loss_usd + profit_in_usd
-        full_profit_loss_percentage = full_profit_loss_percentage + profit_for_percentage_calculation_usd
-        Full_potential_profit = Full_potential_profit + total_profit
-        Full_potential_profit_rus = Full_potential_profit_rus + total_profit_rus
     print()
     print(mytable_rus)
-    print(f'по рублевым бумагам прибыль: {int(Full_potential_profit_rus)}')
+    print(f'по рублевым бумагам прибыль: {int(full_potential_profit_rus)}')
     print()
     print(mytable)
-    print(f'НДФЛ по всем бумагам в РУБ:  {int(full_ndfl)},\
-            общая прибыль по всем бумагам в USD: {int(Full_potential_profit)},\
-             общая прибыль в % {round(full_prof_loss_usd / full_profit_loss_percentage * 100, 1)} ')
+    print(f'НДФЛ по всем бумагам в РУБ:  {int(full_ndfl)},'
+          f'общая прибыль по всем бумагам в USD: {int(full_potential_profit)}')
 
 
 if __name__ == '__main__':

@@ -3,7 +3,7 @@ import yfinance as yf
 import math
 import apimoex
 import pandas as pd
-
+from settings import settings
 
 class Calculations:
 
@@ -25,7 +25,6 @@ class Calculations:
             else:
                 dataframe = pd.DataFrame(data)
                 cur_price = dataframe.CLOSE.tail(1).array[0]
-        # print(cur_price)
         return cur_price * ratio
 
     def rub_securities_processing(self, df_):
@@ -38,8 +37,10 @@ class Calculations:
             market = 'shares'
             ratio = 1
 
-        buy_sum_for_rub_securities = df_.loc[df_['B/S'] == 'Покупка', 'RUB_sum'].sum()
-        sell_sum_for_rub_securities = df_.loc[df_['B/S'] == 'Продажа', 'RUB_sum'].sum()
+        buy_sum_for_rub_securities =\
+            df_.loc[df_.iloc[:, self.settings['buy_col']] == self.settings['buy_code'], 'RUB_sum'].sum()
+        sell_sum_for_rub_securities =\
+            df_.loc[df_.iloc[:, self.settings['buy_col']] == self.settings['sell_code'], 'RUB_sum'].sum()
         average_buy = buy_sum_for_rub_securities / self.total_buy
         average_sell = sell_sum_for_rub_securities / self.total_sell
         current_price = self.get_current_price_rur(board, market, ratio)
@@ -60,26 +61,51 @@ class Calculations:
 
 
 class Ticker(Calculations):
-    def __init__(self, security_df):
-        self.raw_name = security_df['Код инструмента'][0]
-        self.index_buy_deals = security_df.loc[security_df['B/S'] == 'Покупка'].index.array
-        self.buy_volume_array = security_df.loc[security_df['B/S'] == 'Покупка', 'Volume'].array
-        self.sale_volume_array = security_df.loc[security_df['B/S'] == 'Продажа', 'Volume'].array
-        self.index_sell_deals = security_df.loc[security_df['B/S'] == 'Продажа'].index.array
+    def __init__(self, security_df, broker):
+        self.settings = settings(broker)
+        self.raw_name = security_df.iloc[:, self.settings['name']][0]
+        self.index_buy_deals = \
+            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['buy_code']].index.array
+        self.buy_volume_array =\
+            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['buy_code'], 'Volume'].array
+        self.sale_volume_array =\
+            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code'], 'Volume'].array
+        self.index_sell_deals = \
+            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code']].index.array
         self.currency = security_df['Валюта'][0]
+        self.broker = broker
         self.name = self.stock_name()
-        self.length = len(self.name)
         self.df = security_df
+        self.ndfl = 0
+        self.profit_in_usd = 0
+        self.prof_loss_for_sold_securities_rus = 0
+        self.profit_for_outstanding_volumes_rus = 0
+        self.total_profit_rus = 0
         # подсчет количества проданных и купленных бумаг
-        self.total_buy = security_df.loc[security_df['B/S'] == 'Покупка', 'Volume'].sum()
-        self.total_sell = security_df.loc[security_df['B/S'] == 'Продажа', 'Volume'].sum()
+        self.total_buy =\
+            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['buy_code'], 'Volume'].sum()
+        self.total_sell =\
+            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code'], 'Volume'].sum()
+        self.buy_sum_for_rub_securities =\
+            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['buy_code'], 'RUB_sum'].sum()
+        self.sell_sum_for_rub_securities = \
+            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code'], 'RUB_sum'].sum()
         self.outstanding_volumes = self.total_buy - self.total_sell
 
 
     def stock_name(self):
-        if self.currency != 'RUR':
+        if self.currency == 'USD':
             if (self.raw_name[-4:] == '_SPB') | (self.raw_name[-3:] == '-RM'):
                 stock_name = self.raw_name[:-4]
+            else:
+                stock_name = self.raw_name
+        elif self.currency == 'HKD':
+            stock_name = self.raw_name[:-3]
+        elif self.currency == 'EUR':
+            if self.broker == 'VTB':
+                stock_name = self.raw_name[:-4].replace('@', '.')
+            elif self.broker == 'IB':
+                stock_name = self.raw_name[:-1] + '.DE'
         else:
             stock_name = self.raw_name
 

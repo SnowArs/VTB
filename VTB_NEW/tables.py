@@ -1,3 +1,5 @@
+import class_new
+
 RUS_TABLE_COLUMN = [ticker.name,
                      ticker.total_buy,
                      ticker.total_sell,
