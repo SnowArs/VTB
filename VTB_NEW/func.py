@@ -77,6 +77,11 @@ def profit_loss_calculation(ticker, option, sale_row_number, sold_volume, diff_v
 
     ticker.ndfl = ndfl_func(prof_loss_rur) + ticker.ndfl
     ticker.profit_in_usd = prof_loss_usd + ticker.profit_in_usd
+
+    ticker.df['profit_rus'][sale_row_number] = prof_loss_rur
+    ticker.df['ndfl'][sale_row_number] = ticker.ndfl
+    ticker.df['prof_usd'][sale_row_number] = prof_loss_usd
+
     print('закончил profit_loss_calculation')
 
     return ticker

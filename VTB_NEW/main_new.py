@@ -27,6 +27,8 @@ def main_func(full_list_of_securities, df, broker):
     for security in full_list_of_securities:
         df_for_particular_security = df.loc[df.iloc[:, 1] == security].reset_index(drop=True)
         ticker = class_new.Ticker(df_for_particular_security, broker)
+        ticker.df = pd.concat([ticker.df, pd.DataFrame(columns=['profit_rus', 'ndfl', 'prof_usd'])])
+
         # указание на ошибку если остаток акций отрицательный
         if ticker.outstanding_volumes < 0:
             print(f'похоже в позиции {ticker.name} проблемы с вычислениями, так как остаток отрицательный')
@@ -48,6 +50,7 @@ def main_func(full_list_of_securities, df, broker):
         else:
             # вычесление прибыли и убытков
             ticker = culc(ticker)
+            ticker.df.to_excel(f'{ticker.name}.xls')
             # вычисление средней цены  оставшихся бумаг в рублях и валюте
             ticker = outstanding_volume_price(ticker)
             # заполнение таблицы

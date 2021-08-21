@@ -5,6 +5,17 @@ import math
 import yfinance as yf
 from cbrf.models import DynamicCurrenciesRates
 import datetime as dt
+from tradingview_ta import TA_Handler, Interval, Exchange
+
+def get_current_price_hkd(symbol):
+    security_data = TA_Handler(
+        symbol=symbol,
+        screener="hongkong",
+        exchange="HKEX",
+        interval=Interval.INTERVAL_1_DAY
+    )
+    print(symbol, security_data.get_analysis().indicators['close'])
+    return security_data.get_analysis().indicators['close']
 
 
 def get_current_price_rur(ticker, board, market, ratio): #дубль с класс

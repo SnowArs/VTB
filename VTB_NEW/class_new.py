@@ -5,6 +5,7 @@ import apimoex
 import pandas as pd
 from settings import settings
 
+
 class Calculations:
 
     def get_current_price_usd(self):
