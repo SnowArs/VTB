@@ -6,7 +6,10 @@ from func import culc, outstanding_volume_price, rub_securities_processing
 
 warnings.filterwarnings('ignore')
 
-
+""""" 
+1/ создаются таблицы для вывода в более читаемом выводе, чем вывод датафрейма
+2/ 
+"""""
 def main_func(full_list_of_securities, df, broker):
     from prettytable import PrettyTable
     from prettytable import ALL
@@ -24,6 +27,9 @@ def main_func(full_list_of_securities, df, broker):
     mytable.field_names = field_names
     mytable_rus.field_names = field_names[0:4] + ['заф прибыль РУБ'] + field_names[7:]
 
+    """"" 
+    2/ по каждой бумаге в портфеле производится подсчет показателей прибыльности
+    """""
     for security in full_list_of_securities:
         df_for_particular_security = df.loc[df.iloc[:, 1] == security].reset_index(drop=True)
         ticker = class_new.Ticker(df_for_particular_security, broker)
@@ -50,7 +56,8 @@ def main_func(full_list_of_securities, df, broker):
         else:
             # вычесление прибыли и убытков
             ticker = culc(ticker)
-            ticker.df.to_excel(f'{ticker.name}.xls')
+            #сохранение для более простой проверки правильности расчетов
+            ticker.df.to_excel(f'calc\\{ticker.name}.xls')
             # вычисление средней цены  оставшихся бумаг в рублях и валюте
             ticker = outstanding_volume_price(ticker)
             # заполнение таблицы
@@ -73,18 +80,21 @@ def main_func(full_list_of_securities, df, broker):
     return ticker, mytable, mytable_rus, full_ndfl, full_prof_loss_usd, full_potential_profit, full_potential_profit_rus
 
 
+""""" 
+создание базы данных по курсам ЦБ для определнных валют и на определнную датуза, проверка новых дат,
+заполнение колонок  ROE/RUB_sum
+"""""
+
+
 def filling_roe(_df, date_column, currency_column):
     _df = pd.concat([_df, pd.DataFrame(columns=['ROE_index'])])
     for _index, _row in _df.iterrows():
         _df['ROE_index'][_index] = _row[date_column].strftime('%Y-%m-%d') + '_' + _row[currency_column]
 
-    # заполнение ROE/RUB_sum
     if os.path.exists('roe_table.csv'):
         df_roe = pd.read_csv('roe_table.csv', usecols=['ROE_index', 'ROE'])
-        # df_roe['Дата вал.'] = df_roe['Дата вал.'].apply(pd.Timestamp)
         _df = _df.merge(df_roe, how='left', left_on='ROE_index', right_on='ROE_index')
         _df.loc[_df.iloc[:, currency_column] == 'RUR', 'ROE'] = 1
-        # df_with_missed_roe
         if _df.loc[_df['ROE'].isna()].empty:
             print('ROE по всем датам проставленно')
         else:
@@ -107,23 +117,26 @@ def filling_roe(_df, date_column, currency_column):
     return _df
 
 
+"""""
+производится преобразования файла с сайта ВТБ в датафрейм, с последующей отправкой в main_func
+"""""
+
+
 def main():
+
     df = pd.read_excel('сделки_ВТБ.xls', sheet_name='DealOwnsReport', header=3)
     df = df.loc[df['Тип сделки'] == 'Клиентская'].reset_index(drop=True)
     full_list_of_securities = df['Код инструмента'].unique().tolist()
 
-    # группировка
+    # так как сделики в течении дня происходят разными строкам требуется группировка
     df = df.groupby(['Дата вал.', 'Код инструмента', 'B/S', 'Валюта']).agg(
         Price=pd.NamedAgg(column='Цена', aggfunc='mean'),
         Volume=pd.NamedAgg(column='Кол-во', aggfunc='sum'),
         NKD=pd.NamedAgg(column='НКД', aggfunc='sum'),
         Sum=pd.NamedAgg(column='Объем', aggfunc='sum')
     )
-
     df.reset_index(drop=False, inplace=True)
-    # создание двух новых колонок с заполнением
-
-    df = filling_roe(df, 0, 3)
+    df = filling_roe(df, 0, 3) #заполнение курса ЦБ по каждой из операций
     broker = 'VTB'
 
     ticker, mytable, mytable_rus, full_ndfl, full_prof_loss_usd, full_potential_profit, full_potential_profit_rus = \

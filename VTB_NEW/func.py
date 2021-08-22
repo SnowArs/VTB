@@ -1,4 +1,4 @@
-from moex import ndfl_func, get_current_price
+from moex import ndfl_func
 from class_new import Calculations
 import math
 
@@ -100,12 +100,12 @@ def outstanding_volume_price(ticker):
         ticker.average_price_rub = sum_in_rub / sum(ticker.buy_volume_array)
 
         try:
-            ticker.current_price = get_current_price(ticker.name)
+            ticker.current_price = Calculations.get_current_price_usd(ticker)
             ticker.profit_for_outstanding_volumes = (ticker.current_price - ticker.average_price_usd) \
                                                     * ticker.outstanding_volumes
             ticker.total_profit = int(ticker.profit_in_usd + ticker.profit_for_outstanding_volumes - \
                                       ndfl_func(ticker.profit_for_outstanding_volumes))
-            ticker.current_price = round(get_current_price(ticker.name), 1)
+            ticker.current_price = round(Calculations.get_current_price_usd(ticker), 1)
         except IndexError:
             ticker.profit_for_outstanding_volumes = 'N/A'
             ticker.total_profit = 'N/A'
@@ -116,7 +116,7 @@ def outstanding_volume_price(ticker):
         ticker.profit_for_outstanding_volumes = 0
         ticker.average_price_rub = 0
         ticker.total_profit = int(ticker.profit_in_usd)
-        ticker.current_price = get_current_price(ticker.name)
+        ticker.current_price = Calculations.get_current_price_usd(ticker)
         print('закончил outstanding_volume_price')
 
     return ticker

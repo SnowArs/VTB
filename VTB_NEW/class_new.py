@@ -3,6 +3,7 @@ import yfinance as yf
 import math
 import apimoex
 import pandas as pd
+from tradingview_ta import TA_Handler, Interval, Exchange
 from settings import settings
 
 
@@ -11,7 +12,10 @@ class Calculations:
     def get_current_price_usd(self):
         security_name = yf.Ticker(self.name)
         data = security_name.history(period='1d')
-        if math.isnan(data['Close'][0]):
+        if data.empty:
+            print(f'no info for {self.name}')
+            price = -100
+        elif math.isnan(data['Close'][0]):
             price = data['Close'][1]
         else:
             price = data['Close'][0]
@@ -27,6 +31,16 @@ class Calculations:
                 dataframe = pd.DataFrame(data)
                 cur_price = dataframe.CLOSE.tail(1).array[0]
         return cur_price * ratio
+
+    def get_current_price_hkd(self):
+        security_data = TA_Handler(
+            symbol=self.name,
+            screener="hongkong",
+            exchange="HKEX",
+            interval=Interval.INTERVAL_1_DAY
+        )
+        print(self.name, security_data.get_analysis().indicators['close'])
+        return security_data.get_analysis().indicators['close']
 
     def rub_securities_processing(self, df_):
         if self.length > 4:

@@ -1,47 +1,6 @@
-import requests
-import apimoex
 import pandas as pd
-import math
-import yfinance as yf
 from cbrf.models import DynamicCurrenciesRates
 import datetime as dt
-from tradingview_ta import TA_Handler, Interval, Exchange
-
-def get_current_price_hkd(symbol):
-    security_data = TA_Handler(
-        symbol=symbol,
-        screener="hongkong",
-        exchange="HKEX",
-        interval=Interval.INTERVAL_1_DAY
-    )
-    print(symbol, security_data.get_analysis().indicators['close'])
-    return security_data.get_analysis().indicators['close']
-
-
-def get_current_price_rur(ticker, board, market, ratio): #дубль с класс
-    print('get_current_price_rur')
-    with requests.Session() as session:
-        data = apimoex.get_board_history(session, ticker, market=market, board=board)
-        if not data:
-            print(f'no info for {ticker}')
-            cur_price = -100
-        else:
-            df = pd.DataFrame(data)
-            cur_price = df.CLOSE.tail(1).array[0]
-    # print(cur_price)
-    return cur_price * ratio
-
-
-# вычисление котировки на данный момент
-def get_current_price(symbol): #дубль класс
-    print('get_current_price')
-    ticker = yf.Ticker(symbol)
-    todays_data = ticker.history(period='1d')
-    if math.isnan(todays_data['Close'][0]):
-        price = todays_data['Close'][1]
-    else:
-        price = todays_data['Close'][0]
-    return price
 
 
 # функция подстановки ROE в таблицу
