@@ -12,7 +12,7 @@ class Calculations:
     def get_current_price_usd(self):
         security_name = yf.Ticker(self.name)
         data = security_name.history(period='1d')
-        if not data:
+        if data.empty:
             print(f'no info for {self.name}')
             price = -100
         elif math.isnan(data['Close'][0]):
@@ -92,6 +92,7 @@ class Ticker(Calculations):
         self.name = self.stock_name()
         self.df = security_df
         self.ndfl = 0
+        self.ndfl_full = 0
         self.profit_in_usd = 0
         self.prof_loss_for_sold_securities_rus = 0
         self.profit_for_outstanding_volumes_rus = 0

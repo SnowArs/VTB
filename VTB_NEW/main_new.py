@@ -10,7 +10,7 @@ warnings.filterwarnings('ignore')
 1/ создаются таблицы для вывода в более читаемом выводе, чем вывод датафрейма
 2/ 
 """""
-def main_func(full_list_of_securities, df, broker):
+def main_func(full_list_of_securities, df, broker, error_arr):
     from prettytable import PrettyTable
     from prettytable import ALL
     full_ndfl = 0
@@ -31,53 +31,65 @@ def main_func(full_list_of_securities, df, broker):
     2/ по каждой бумаге в портфеле производится подсчет показателей прибыльности
     """""
     for security in full_list_of_securities:
+        print(f'processing {security}')
         df_for_particular_security = df.loc[df.iloc[:, 1] == security].reset_index(drop=True)
-        ticker = class_new.Ticker(df_for_particular_security, broker)
-        ticker.df = pd.concat([ticker.df, pd.DataFrame(columns=['profit_rus', 'ndfl', 'prof_usd'])])
-
-        # указание на ошибку если остаток акций отрицательный
-        if ticker.outstanding_volumes < 0:
-            print(f'похоже в позиции {ticker.name} проблемы с вычислениями, так как остаток отрицательный')
+        if df_for_particular_security.empty:
+            print(f'пустая датафрейм для  {security}')
+            error_arr.append(security)
             continue
-        # обработка рублевых бумаг
-        if ticker.currency == 'RUR':
-            ticker = rub_securities_processing(ticker)
+        else:
+            ticker = class_new.Ticker(df_for_particular_security, broker)
+            ticker.df = pd.concat([ticker.df, pd.DataFrame(columns=['profit_rus', 'ndfl', 'prof_usd'])])
 
-            mytable_rus.add_row([ticker.name,
+            # указание на ошибку если остаток акций отрицательный
+            if (ticker.outstanding_volumes < 0) or (ticker.index_sell_deals.size == 0):
+                print(f'похоже в позиции {ticker.name} проблемы с вычислениями, так как остаток отрицательный')
+                error_arr.append(ticker.name)
+                continue
+            elif (ticker.index_sell_deals.size > 0) and (ticker.index_buy_deals.size > 0):
+                    if (ticker.index_sell_deals[0]  <  ticker.index_buy_deals[0]):
+                        input(f'похоже в позиции {ticker.name} пропущены покупки, так как таблица начинается с продаж')
+                        continue
+            # обработка рублевых бумаг
+            if ticker.currency == 'RUR':
+                ticker = rub_securities_processing(ticker)
+
+                mytable_rus.add_row([ticker.name,
+                                     ticker.total_buy,
+                                     ticker.total_sell,
+                                     ticker.outstanding_volumes,
+                                     int(ticker.prof_loss_for_sold_securities_rus),
+                                     ticker.current_price,
+                                     int(ticker.profit_for_outstanding_volumes_rus),
+                                     int(ticker.total_profit_rus)])
+
+            # блок вычисления прибыли и убытков по бумаге в USD и EUR
+            else:
+                # вычесление прибыли и убытков
+                ticker, errors = culc(ticker, error_arr)
+                #сохранение для более простой проверки правильности расчетов
+                ticker.df.to_excel(f'calc\\{ticker.name}.xls')
+                # вычисление средней цены  оставшихся бумаг в рублях и валюте
+                ticker = outstanding_volume_price(ticker)
+                # заполнение таблицы
+                mytable.add_row([ticker.name,
                                  ticker.total_buy,
                                  ticker.total_sell,
                                  ticker.outstanding_volumes,
-                                 int(ticker.prof_loss_for_sold_securities_rus),
-                                 ticker.current_price,
-                                 int(ticker.profit_for_outstanding_volumes_rus),
-                                 int(ticker.total_profit_rus)])
+                                 int(ticker.ndfl_full),
+                                 int(ticker.profit_in_usd),
+                                 round(ticker.average_price_usd, 1),
+                                 round(ticker.current_price, 1),
+                                 round(ticker.profit_for_outstanding_volumes, 1),
+                                 int(ticker.total_profit)])
 
-        # блок вычисления прибыли и убытков по бумаге в USD и EUR
-        else:
-            # вычесление прибыли и убытков
-            ticker = culc(ticker)
-            #сохранение для более простой проверки правильности расчетов
-            ticker.df.to_excel(f'VTB_NEW\\calc\\{ticker.name}.xls')
-            # вычисление средней цены  оставшихся бумаг в рублях и валюте
-            ticker = outstanding_volume_price(ticker)
-            # заполнение таблицы
-            mytable.add_row([ticker.name,
-                             ticker.total_buy,
-                             ticker.total_sell,
-                             ticker.outstanding_volumes,
-                             int(ticker.ndfl),
-                             int(ticker.profit_in_usd),
-                             round(ticker.average_price_usd, 1),
-                             round(ticker.current_price, 1),
-                             round(ticker.profit_for_outstanding_volumes, 1),
-                             int(ticker.total_profit)])
+            full_ndfl = full_ndfl + ticker.ndfl
+            full_prof_loss_usd = full_prof_loss_usd + ticker.profit_in_usd
+            full_potential_profit = full_potential_profit + ticker.total_profit
+            full_potential_profit_rus = full_potential_profit_rus + ticker.total_profit_rus
 
-        full_ndfl = full_ndfl + ticker.ndfl
-        full_prof_loss_usd = full_prof_loss_usd + ticker.profit_in_usd
-        full_potential_profit = full_potential_profit + ticker.total_profit
-        full_potential_profit_rus = full_potential_profit_rus + ticker.total_profit_rus
-
-    return ticker, mytable, mytable_rus, full_ndfl, full_prof_loss_usd, full_potential_profit, full_potential_profit_rus
+    return ticker, mytable, mytable_rus, full_ndfl, full_prof_loss_usd, \
+           full_potential_profit, full_potential_profit_rus, errors
 
 
 """"" 
@@ -127,6 +139,7 @@ def main():
     df = pd.read_excel('сделки_ВТБ.xls', sheet_name='DealOwnsReport', header=3)
     df = df.loc[df['Тип сделки'] == 'Клиентская'].reset_index(drop=True)
     full_list_of_securities = df['Код инструмента'].unique().tolist()
+    # full_list_of_securities = 'BABA'
 
     # так как сделики в течении дня происходят разными строкам требуется группировка
     df = df.groupby(['Дата вал.', 'Код инструмента', 'B/S', 'Валюта']).agg(
