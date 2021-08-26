@@ -6,19 +6,27 @@ from func import culc, outstanding_volume_price, rub_securities_processing
 
 warnings.filterwarnings('ignore')
 
+
+def append_to_total_profit(ticker, total_ndfl, total_combined_profit):
+    total_ndfl += ticker.ndfl_full
+    total_combined_profit += ticker.full_profit
+    return total_ndfl, total_combined_profit
+
+
 """"" 
 1/ создаются таблицы для вывода в более читаемом выводе, чем вывод датафрейма
 2/ 
 """""
 
 
-def main_func(full_list_of_securities, df, broker, error_arr):
+def main_func(full_list_of_securities, df, broker, error_arr=[]):
     from prettytable import PrettyTable
     from prettytable import ALL
-    full_ndfl = 0
-    full_prof_loss_usd = 0
-    full_potential_profit = 0
-    full_potential_profit_rus = 0
+    total_ndfl_rus = 0
+    total_ndfl_non_rus = 0
+    total_combined_profit_rus = 0
+    total_combined_profit_non_rus = 0
+
     # сознадние таблицы вывода
     mytable = PrettyTable()  # иностранные бумаги
     mytable_rus = PrettyTable()
@@ -28,7 +36,7 @@ def main_func(full_list_of_securities, df, broker, error_arr):
                    'средняя цена', 'текущая цена', 'потенциальная прибыль', 'прибыль всех бумаг']
     mytable.field_names = field_names
     mytable_rus.field_names = field_names[0:4] + ['заф прибыль РУБ'] + field_names[7:]
-
+    array_with_results = []
     """"" 
     2/ по каждой бумаге в портфеле производится подсчет показателей прибыльности
     """""
@@ -76,15 +84,17 @@ def main_func(full_list_of_securities, df, broker, error_arr):
             if ticker.currency == 'RUR':
                 ticker, errors = rub_securities_processing(ticker, error_arr)
 
-                mytable_rus.add_row([ticker.name,
-                                     ticker.total_buy,
-                                     ticker.total_sell,
-                                     ticker.outstanding_volumes,
-                                     int(ticker.prof_loss_for_sold_securities),
-                                     ticker.current_price,
-                                     int(ticker.profit_for_outstanding_volumes),
-                                     int(ticker.total_profit_rus)])
-
+                RUS_TABLE_COLUMN = [ticker.name,
+                                    ticker.total_buy,
+                                    ticker.total_sell,
+                                    ticker.outstanding_volumes,
+                                    int(ticker.prof_for_sold_securities),
+                                    ticker.current_price,
+                                    int(ticker.profit_for_outstanding_volumes),
+                                    int(ticker.full_profit)]
+                mytable_rus.add_row(RUS_TABLE_COLUMN)
+                total_ndfl_rus, total_combined_profit_rus =\
+                    append_to_total_profit(ticker, total_ndfl_rus, total_combined_profit_rus)
             # блок вычисления прибыли и убытков по бумаге в USD/ EUR /HKD
             else:
                 # вычесление прибыли и убытков
@@ -94,24 +104,28 @@ def main_func(full_list_of_securities, df, broker, error_arr):
                 # вычисление средней цены  оставшихся бумаг в рублях и валюте
                 ticker = outstanding_volume_price(ticker)
                 # заполнение таблицы
-                mytable.add_row([ticker.name,
-                                 ticker.total_buy,
-                                 ticker.total_sell,
-                                 ticker.outstanding_volumes,
-                                 int(ticker.ndfl_full),
-                                 int(ticker.profit_in_usd * ticker.exchange_to_usd),
-                                 round(ticker.average_price_usd, 1),
-                                 round(ticker.current_price, 1),
-                                 round(ticker.profit_for_outstanding_volumes * ticker.exchange_to_usd, 1),
-                                 int(ticker.total_profit * ticker.exchange_to_usd)])
-
-            full_ndfl = full_ndfl + ticker.ndfl
-            full_prof_loss_usd = full_prof_loss_usd + ticker.profit_in_usd
-            full_potential_profit = (full_potential_profit + ticker.total_profit) * ticker.exchange_to_usd
-            full_potential_profit_rus = full_potential_profit_rus + ticker.total_profit_rus
-
-    return ticker, mytable, mytable_rus, full_ndfl, full_prof_loss_usd, \
-           full_potential_profit, full_potential_profit_rus, errors
+                NON_RUS_TABLE_COLUMNS = [ticker.name,
+                                         ticker.total_buy,
+                                         ticker.total_sell,
+                                         ticker.outstanding_volumes,
+                                         int(ticker.ndfl_full),
+                                         int(ticker.prof_for_sold_securities * ticker.exchange_to_usd),
+                                         round(ticker.average_price_usd, 1),
+                                         round(ticker.current_price, 1),
+                                         round(ticker.profit_for_outstanding_volumes * ticker.exchange_to_usd, 1),
+                                         int(ticker.full_profit * ticker.exchange_to_usd)]
+                mytable.add_row(NON_RUS_TABLE_COLUMNS)
+                array_with_results.append(NON_RUS_TABLE_COLUMNS)
+                total_ndfl_non_rus, total_combined_profit_non_rus =\
+                    append_to_total_profit(ticker, total_ndfl_non_rus, total_combined_profit_non_rus)
+        # full_ndfl = full_ndfl + ticker.ndfl
+        # full_prof_loss_usd = full_prof_loss_usd + ticker.prof_for_sold_securities
+        # full_potential_profit = full_potential_profit + ticker.total_profit * ticker.exchange_to_usd
+        # full_potential_profit_rus = full_potential_profit_rus + ticker.total_profit_rus
+    df_with_results = pd.DataFrame(array_with_results, columns=field_names)
+    df_with_results.to_excel('calc\\results.xls')
+    return ticker, mytable, mytable_rus, total_ndfl_rus, total_ndfl_non_rus,\
+           total_combined_profit_rus, total_combined_profit_non_rus, errors, df_with_results
 
 
 """"" 
@@ -160,7 +174,7 @@ def main():
     df = pd.read_excel('сделки_ВТБ.xls', sheet_name='DealOwnsReport', header=3)
     df = df.loc[df['Тип сделки'] == 'Клиентская'].reset_index(drop=True)
     full_list_of_securities = df['Код инструмента'].unique().tolist()
-    # full_list_of_securities = ['RU000A102TT0']
+    # full_list_of_securities = ['COG']
 
     # так как сделики в течении дня происходят разными строкам требуется группировка
     df = df.groupby(['Дата вал.', 'Код инструмента', 'B/S', 'Валюта']).agg(
@@ -173,16 +187,16 @@ def main():
     df = filling_roe(df, 0, 3)  # заполнение курса ЦБ по каждой из операций
     broker = 'VTB'
     errors = []
-    ticker, mytable, mytable_rus, full_ndfl, full_prof_loss_usd, full_potential_profit, full_potential_profit_rus, error_arr = \
-        main_func(full_list_of_securities, df, broker, errors)
+    ticker, mytable, mytable_rus, total_ndfl_rus, total_ndfl_non_rus, total_combined_profit_rus, \
+    total_combined_profit_non_rus, error_arr, df_with_results = main_func(full_list_of_securities, df, broker, errors)
 
     print()
     print(mytable_rus)
-    print(f'по рублевым бумагам прибыль: {int(full_potential_profit_rus)}')
+    print(f'по рублевым бумагам прибыль: {int(total_combined_profit_rus)}')
     print()
     print(mytable)
-    print(f'НДФЛ по всем бумагам в РУБ:  {int(full_ndfl)},'
-          f'общая прибыль по всем бумагам в USD: {int(full_potential_profit)}')
+    print(f'НДФЛ по всем бумагам в РУБ:  {int(total_ndfl)},'
+          f'общая прибыль по всем бумагам в USD: {int(total_combined_profit_non_rus)}')
 
 
 if __name__ == '__main__':

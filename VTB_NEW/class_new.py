@@ -72,19 +72,19 @@ class Calculations:
         average_sell = sell_sum_for_rub_securities / self.total_sell
         current_price = self.get_current_price_rur(board, market, ratio)
         if self.outstanding_volumes == 0:
-            prof_loss_for_sold_securities = sell_sum_for_rub_securities - buy_sum_for_rub_securities
+            prof_for_sold_securities = sell_sum_for_rub_securities - buy_sum_for_rub_securities
             profit_for_outstanding_volumes = 0
         elif math.isnan(average_sell):
-            prof_loss_for_sold_securities = 0
+            prof_for_sold_securities = 0
             average_sell = 0
             profit_for_outstanding_volumes = (current_price - average_buy) * self.outstanding_volumes
         else:
-            prof_loss_for_sold_securities = sell_sum_for_rub_securities - self.total_sell * average_buy
+            prof_for_sold_securities = sell_sum_for_rub_securities - self.total_sell * average_buy
             profit_for_outstanding_volumes = (current_price - average_buy) * self.outstanding_volumes
 
-        total_profit = prof_loss_for_sold_securities + profit_for_outstanding_volumes
+        full_profit = prof_for_sold_securities + profit_for_outstanding_volumes
 
-        return prof_loss_for_sold_securities, average_buy, profit_for_outstanding_volumes, total_profit
+        return prof_for_sold_securities, average_buy, profit_for_outstanding_volumes, full_profit
 
 
 class Ticker(Calculations):
@@ -108,11 +108,12 @@ class Ticker(Calculations):
         self.df = security_df
         self.current_price = round(self.get_current_price(self.board, self.market, self.ratio), 2)
         self.exchange_to_usd = self.exchange()
+
         self.ndfl = 0
         self.ndfl_full = 0
-        self.total_profit = 0
-        self.profit_in_usd = 0
-        self.total_profit_rus = 0
+        self.full_profit = 0
+        self.prof_for_sold_securities = 0
+        self.profit_for_outstanding_volumes = 0
         # подсчет количества проданных и купленных бумаг
         self.total_buy = \
             security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['buy_code'], 'Volume'].sum()
