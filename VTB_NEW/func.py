@@ -1,5 +1,4 @@
 from moex import ndfl_func
-from class_new import Calculations
 import math
 
 
@@ -21,7 +20,7 @@ def culc(ticker, error_array):
                 ticker = profit_loss_calculation(ticker, 0, sale_row_number, sold_volume, sold_volume)
                 ticker.buy_volume_array[0] = ticker.buy_volume_array[0] - sold_volume
                 break
-            elif sold_volume_lef < 0: # отрицательный объем
+            elif sold_volume_lef < 0:  # отрицательный объем
                 for i, buy_ind in enumerate(ticker.index_buy_deals):
                     if i == 0:
                         sold_volume_in_loop = ticker.buy_volume_array[0]
@@ -70,13 +69,14 @@ def profit_loss_calculation(ticker, option, sale_row_number, sold_volume, i=0):
 
     elif option == 1:
         buy_row_number = ticker.index_buy_deals[i]
-        prof_loss_rur = sold_volume/ticker.df['Volume'][sale_row_number] * ticker.df['RUB_sum'][sale_row_number] - \
-                        sold_volume  * ticker.df['ROE'][buy_row_number] * ticker.df['Price'][buy_row_number]
+        prof_loss_rur = sold_volume / ticker.df['Volume'][sale_row_number] * ticker.df['RUB_sum'][sale_row_number] - \
+                        sold_volume * ticker.df['ROE'][buy_row_number] * ticker.df['Price'][buy_row_number]
         prof_loss_usd = sold_volume * ticker.df['Price'][sale_row_number] - sold_volume \
-                        * ticker.df['Price'][buy_row_number] - ndfl_func(prof_loss_rur) / ticker.df['ROE'][sale_row_number]
+                        * ticker.df['Price'][buy_row_number] - ndfl_func(prof_loss_rur) / ticker.df['ROE'][
+                            sale_row_number]
 
     elif option == 2:
-        prof_loss_rur = sold_volume/ticker.df['Volume'][sale_row_number] * ticker.df['RUB_sum'][sale_row_number] - \
+        prof_loss_rur = sold_volume / ticker.df['Volume'][sale_row_number] * ticker.df['RUB_sum'][sale_row_number] - \
                         sold_volume * ticker.df.iloc[ticker.index_buy_deals[i]]['ROE'] * \
                         ticker.df.iloc[ticker.index_buy_deals[i]]['Price']
         prof_loss_usd = sold_volume * ticker.df['Price'][sale_row_number] - \
@@ -85,7 +85,7 @@ def profit_loss_calculation(ticker, option, sale_row_number, sold_volume, i=0):
 
     ticker.ndfl = ndfl_func(prof_loss_rur)
     ticker.ndfl_full = ticker.ndfl_full + ticker.ndfl
-    ticker.profit_in_usd = prof_loss_usd + ticker.profit_in_usd
+    ticker.profit_in_usd = (prof_loss_usd + ticker.profit_in_usd) * ticker.exchange_to_usd
 
     ticker.df['profit_rus'][sale_row_number] = prof_loss_rur
     ticker.df['ndfl'][sale_row_number] = ticker.ndfl
@@ -109,12 +109,10 @@ def outstanding_volume_price(ticker):
         ticker.average_price_rub = sum_in_rub / sum(ticker.buy_volume_array)
 
         try:
-            ticker.current_price = Calculations.get_current_price_usd(ticker)
             ticker.profit_for_outstanding_volumes = (ticker.current_price - ticker.average_price_usd) \
                                                     * ticker.outstanding_volumes
             ticker.total_profit = int(ticker.profit_in_usd + ticker.profit_for_outstanding_volumes - \
                                       ndfl_func(ticker.profit_for_outstanding_volumes))
-            ticker.current_price = round(Calculations.get_current_price_usd(ticker), 1)
         except IndexError:
             ticker.profit_for_outstanding_volumes = 'N/A'
             ticker.total_profit = 'N/A'
@@ -125,26 +123,16 @@ def outstanding_volume_price(ticker):
         ticker.profit_for_outstanding_volumes = 0
         ticker.average_price_rub = 0
         ticker.total_profit = int(ticker.profit_in_usd)
-        ticker.current_price = Calculations.get_current_price_usd(ticker)
         print('закончил outstanding_volume_price')
 
     return ticker
 
 
-def rub_securities_processing(ticker):
+def rub_securities_processing(ticker, error_array):
     print('start rub_securities_processing')
-    if len(ticker.name) > 4:
-        board = 'TQCB'
-        market = 'bonds'
-        ratio = 10
-    else:
-        board = 'TQBR'
-        market = 'shares'
-        ratio = 1
 
     ticker.average_buy = ticker.buy_sum_for_rub_securities / ticker.total_buy
     ticker.average_sell = ticker.sell_sum_for_rub_securities / ticker.total_sell
-    ticker.current_price = Calculations.get_current_price_rur(ticker, board, market, ratio)
     if ticker.outstanding_volumes == 0:
         ticker.prof_loss_for_sold_securities = ticker.sell_sum_for_rub_securities - ticker.buy_sum_for_rub_securities
         ticker.profit_for_outstanding_volumes = 0
@@ -156,7 +144,11 @@ def rub_securities_processing(ticker):
         ticker.prof_loss_for_sold_securities = ticker.sell_sum_for_rub_securities - ticker.total_sell * ticker.average_buy
         ticker.profit_for_outstanding_volumes = (ticker.current_price - ticker.average_buy) * ticker.outstanding_volumes
 
-    ticker.total_profit = ticker.prof_loss_for_sold_securities + ticker.profit_for_outstanding_volumes
+    ticker.total_profit_rus = ticker.prof_loss_for_sold_securities + ticker.profit_for_outstanding_volumes
+
+    if ticker.outstanding_volumes != sum(ticker.buy_volume_array):
+        print(f"количество оставшихся бумаг {ticker.name} и полученных в результате подсчета не совпадают")
+        error_array.append(ticker.name)
     print('закончил rub_securities_processing')
 
-    return ticker
+    return ticker, error_array
