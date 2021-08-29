@@ -96,28 +96,26 @@ def profit_calculation(ticker, option, sale_row_number, sold_volume, i=0):
     return ticker
 
 
-def outstanding_volume_price(ticker):
+def outstanding_volume_price(ticker, error_array):
     print('start outstanding_volume_price')
     sum_in_usd = 0
     sum_in_rub = 0
     if len(ticker.buy_volume_array) != 0:
         for number, line in enumerate(ticker.index_buy_deals):
-            sum_in_usd = ticker.buy_volume_array[number] * ticker.df['Price'][line] + sum_in_usd
-            sum_in_rub = ticker.buy_volume_array[number] * ticker.df['Price'][line] * \
-                         ticker.df['ROE'][line] + sum_in_rub
+            sum_in_usd += ticker.buy_volume_array[number] * ticker.df['Price'][line]
+            sum_in_rub += ticker.buy_volume_array[number] * ticker.df['Price'][line] * ticker.df['ROE'][line]
         ticker.average_price_usd = sum_in_usd / sum(ticker.buy_volume_array)
         ticker.average_price_rub = sum_in_rub / sum(ticker.buy_volume_array)
-
+        ticker.average_roe_for_outstanding_volumes = ticker.average_price_rub/ticker.average_price_usd
         try:
             ticker.profit_for_outstanding_volumes = (ticker.current_price - ticker.average_price_usd) \
-                                                    * ticker.outstanding_volumes
+                                                    * ticker.outstanding_volumes * ticker.exchange_to_usd
             ticker.full_profit = int(ticker.prof_for_sold_securities + ticker.profit_for_outstanding_volumes - \
                                       ndfl_func(ticker.profit_for_outstanding_volumes))
         except IndexError:
             ticker.profit_for_outstanding_volumes = 'N/A'
             ticker.full_profit = 'N/A'
             ticker.current_price = 'N/A'
-
     else:
         ticker.average_price_usd = 0
         ticker.profit_for_outstanding_volumes = 0
@@ -125,7 +123,11 @@ def outstanding_volume_price(ticker):
         ticker.full_profit = int(ticker.prof_for_sold_securities)
         print('закончил outstanding_volume_price')
 
-    return ticker
+    if ticker.outstanding_volumes != sum(ticker.buy_volume_array):
+        print(f"количество оставшихся бумаг {ticker.name} и полученных в результате подсчета не совпадают")
+        error_array.append(ticker.name)
+
+    return ticker, error_array
 
 
 def rub_securities_processing(ticker, error_array):
@@ -135,25 +137,24 @@ def rub_securities_processing(ticker, error_array):
     ticker.average_sell = ticker.sell_sum_for_rub_securities / ticker.total_sell
     if ticker.outstanding_volumes == 0:
         prof_for_sold_securities = ticker.sell_sum_for_rub_securities - ticker.buy_sum_for_rub_securities
-        ticker.prof_for_sold_securities += ndfl_func(prof_for_sold_securities)
+        ticker.prof_for_sold_securities = prof_for_sold_securities - ndfl_func(prof_for_sold_securities)
         profit_for_outstanding_volumes = 0
         ticker.profit_for_outstanding_volumes = 0
     elif math.isnan(ticker.average_sell):
         ticker.prof_for_sold_securities = 0
         ticker.average_sell = 0
         profit_for_outstanding_volumes = (ticker.current_price - ticker.average_buy) * ticker.outstanding_volumes
-        ticker.profit_for_outstanding_volumes += ndfl_func(profit_for_outstanding_volumes)
+        ticker.profit_for_outstanding_volumes = profit_for_outstanding_volumes -\
+                                                ndfl_func(profit_for_outstanding_volumes)
     else:
         prof_for_sold_securities = ticker.sell_sum_for_rub_securities - ticker.total_sell * ticker.average_buy
-        ticker.prof_for_sold_securities += ndfl_func(prof_for_sold_securities)
+        ticker.prof_for_sold_securities =prof_for_sold_securities - ndfl_func(prof_for_sold_securities)
         profit_for_outstanding_volumes = (ticker.current_price - ticker.average_buy) * ticker.outstanding_volumes
-        ticker.profit_for_outstanding_volumes += ndfl_func(profit_for_outstanding_volumes)
+        ticker.profit_for_outstanding_volumes =profit_for_outstanding_volumes -\
+                                               ndfl_func(profit_for_outstanding_volumes)
     ticker.full_profit = ticker.prof_for_sold_securities + ticker.profit_for_outstanding_volumes
     ticker.ndfl_full = ndfl_func(profit_for_outstanding_volumes)
 
-    if ticker.outstanding_volumes != sum(ticker.buy_volume_array):
-        print(f"количество оставшихся бумаг {ticker.name} и полученных в результате подсчета не совпадают")
-        error_array.append(ticker.name)
     print('закончил rub_securities_processing')
 
     return ticker, error_array

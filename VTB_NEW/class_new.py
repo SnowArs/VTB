@@ -108,6 +108,7 @@ class Ticker(Calculations):
         self.df = security_df
         self.current_price = round(self.get_current_price(self.board, self.market, self.ratio), 2)
         self.exchange_to_usd = self.exchange()
+        self.average_roe_for_outstanding_volumes = 0
 
         self.ndfl = 0
         self.ndfl_full = 0
@@ -128,8 +129,9 @@ class Ticker(Calculations):
 
     def stock_name(self):
         if self.currency == 'USD':
-            if (self.raw_name[-4:] == '_SPB') | (self.raw_name[-3:] == '-RM'):
-                stock_name = self.raw_name[:-4]
+            if self.broker == 'VTB':
+                if (self.raw_name[-4:] == '_SPB') | (self.raw_name[-3:] == '-RM'):
+                    stock_name = self.raw_name[:-4]
             else:
                 stock_name = self.raw_name
         elif self.currency == 'HKD':
@@ -150,7 +152,6 @@ class Ticker(Calculations):
                 self.board = 'TQBR'
                 self.market = 'shares'
                 self.ratio = 1
-
 
         return stock_name
 
