@@ -1,7 +1,4 @@
 import warnings
-
-import pandas as pd
-
 from moex import *
 import class_new
 import os.path
@@ -38,7 +35,7 @@ def excel_saving(**kwargs):
 """""
 
 
-def main_func(full_list_of_securities, df, broker):
+def main_func(full_list_of_securities, df, broker, task):
     from prettytable import PrettyTable
     from prettytable import ALL
     total_ndfl_rus = 0
@@ -54,7 +51,7 @@ def main_func(full_list_of_securities, df, broker):
     # имена полей таблицы
     field_names = ['Тикер', 'Куплено', 'Продано', 'Остаток', 'НДФЛ, РУБ', 'Прибыль в USD',
                    'средняя цена', 'текущая цена', 'потенциальная прибыль', 'прибыль всех бумаг']
-    field_names_rus = field_names[0:4] + ['заф прибыль РУБ'] + field_names[6:]
+    field_names_rus = field_names[0:5] + ['заф прибыль РУБ'] + field_names[6:]
     mytable.field_names = field_names
     mytable_rus.field_names = field_names_rus
     array_with_results = []
@@ -92,14 +89,13 @@ def main_func(full_list_of_securities, df, broker):
                         ticker.sale_volume_array[-1] = int(ticker.sale_volume_array[-1] + ticker.outstanding_volumes)
 
                         ticker.df.iat[ticker.index_sell_deals[-1], 5] = \
-                            int(ticker.df.iat[ticker.index_sell_deals[-1], 5] + \
-                                ticker.outstanding_volumes)
+                            int(ticker.df.iat[ticker.index_sell_deals[-1], 5] + ticker.outstanding_volumes)
                         ticker.outstanding_volumes = 0
                         start = False
                 error_arr.append(ticker.name)
             # ошибка пропущенных покупок, либо шорт
             elif (ticker.index_sell_deals.size > 0) and (ticker.index_buy_deals.size > 0):
-                if (ticker.index_sell_deals[0] < ticker.index_buy_deals[0]):
+                if ticker.index_sell_deals[0] < ticker.index_buy_deals[0]:
                     input(f'похоже в позиции {ticker.name} пропущены покупки, так как таблица начинается с продаж')
                     continue
             # обработка рублевых бумаг
@@ -112,8 +108,9 @@ def main_func(full_list_of_securities, df, broker):
                                     ticker.total_buy,
                                     ticker.total_sell,
                                     ticker.outstanding_volumes,
+                                    round(ticker.ndfl_full, 2),
                                     int(ticker.prof_for_sold_securities),
-                                    ticker.average_buy,
+                                    round(ticker.average_buy, 2),
                                     ticker.current_price,
                                     int(ticker.profit_for_outstanding_volumes),
                                     int(ticker.full_profit)]
@@ -147,6 +144,7 @@ def main_func(full_list_of_securities, df, broker):
                 array_with_results.append(NON_RUS_TABLE_COLUMNS + [ticker.average_roe_for_outstanding_volumes])
                 total_ndfl_non_rus, total_combined_profit_non_rus = \
                     append_to_total_profit(ticker, total_ndfl_non_rus, total_combined_profit_non_rus)
+    # сохранение результатов
     path_to_save = 'BD\\results_rus_'
     formula_list = {'df': pd.DataFrame(), 'arr': array_with_results_rus, 'name': broker, 'path': path_to_save,
                     'columns': field_names_rus}
@@ -165,6 +163,8 @@ def main_func(full_list_of_securities, df, broker):
     print(mytable)
     print(f'НДФЛ по всем иностранным бумагам в РУБ:  {int(total_ndfl_non_rus)},'
           f'общая прибыль по всем бумагам в USD: {int(total_combined_profit_non_rus)}')
+
+    print(f'{task} FINNINSHED')
     return
 
 
@@ -193,10 +193,10 @@ def filling_roe(_df, date_column, currency_column):
         for ind, line in _df.iterrows():
             _df = pd.concat([_df, pd.DataFrame(columns=['ROE'])])
             _df['ROE'][line] = fill_roe(line[date_column], line[currency_column], _df.iloc[:, date_column].min())
-    _df2 = _df.loc[(_df['ROE'] != 1) & (_df.iloc[:, date_column] < dt.datetime.today().strftime('%Y-%m-%d')), \
+    _df2 = _df.loc[(_df['ROE'] != 1) & (_df.iloc[:, date_column] < dt.datetime.today().strftime('%Y-%m-%d')),
                    ['ROE_index', 'ROE']]
     _df2 = _df.drop_duplicates('ROE_index', ignore_index=True)
-    df_roe = df_roe.append(_df2)
+    df_roe = df_roe.append(_df2)# проверить логику появления df_roe
     df_roe = df_roe.drop_duplicates('ROE_index', ignore_index=True)
     df_roe.to_csv('BD\\roe_table.csv', index=False)
 

@@ -17,7 +17,7 @@ class Calculations:
                 exchange="HKEX",
                 interval=Interval.INTERVAL_1_DAY
             )
-            print(self.name, security_data.get_analysis().indicators['close'])
+            # print(self.name, security_data.get_analysis().indicators['close'])
             self.current_price = security_data.get_analysis().indicators['close']
             return self
 

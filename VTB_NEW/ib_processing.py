@@ -5,8 +5,9 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-def main():
-    with open('BD\\ib.csv', encoding='utf-8', newline='') as File:
+async def ib(task):
+    print(f'Started {task}')
+    with open('BD\\ib_20210101_20210827.csv', encoding='utf-8', newline='') as File:
         reader = csv.reader(File)
         first = True
         for row in reader:
@@ -29,7 +30,7 @@ def main():
     df = df.groupby(['date', 'Символ', 'B/S', 'Валюта']).agg(
         Price=pd.NamedAgg(column='Цена транзакции', aggfunc='mean'),
         Volume=pd.NamedAgg(column='Количество', aggfunc='sum'),
-        Comisson=pd.NamedAgg(column='Комиссия/плата', aggfunc='sum'),
+        Commission=pd.NamedAgg(column='Комиссия/плата', aggfunc='sum'),
         Sum=pd.NamedAgg(column='Выручка', aggfunc='sum')
     )
     df.reset_index(drop=False, inplace=True)
@@ -43,9 +44,9 @@ def main():
     df = df.drop(df.loc[df['B/S'] == ''].index)
     df.reset_index(drop=True, inplace=True)
     df = df[['date', 'Символ', 'B/S', 'Валюта', 'Price', 'Volume', 'Commission', 'Sum', 'ROE_index', 'ROE', 'RUB_sum']]
-    main_func(full_list_of_securities, df, broker)
+    main_func(full_list_of_securities, df, broker, task)
     return
 
 
 if __name__ == '__main__':
-    main()
+    ib()

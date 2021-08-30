@@ -3,7 +3,7 @@ import math
 
 
 def culc(ticker, error_array):
-    print('начал выполнение culc функции')
+    # print('начал выполнение culc функции')
     index_to_del = []
     for sale_row_number in ticker.index_sell_deals:
         stop = False
@@ -53,12 +53,12 @@ def culc(ticker, error_array):
     if ticker.outstanding_volumes != sum(ticker.buy_volume_array):
         print(f"количество оставшихся бумаг {ticker.name} и полученных в результате подсчета не совпадают")
         error_array.append(ticker.name)
-    print('закончил выполнение culc функции')
+    # print('закончил выполнение culc функции')
     return ticker, error_array
 
 
 def profit_calculation(ticker, option, sale_row_number, sold_volume, i=0):
-    print('начал выполнение profit_calculation функции')
+    # print('начал выполнение profit_calculation функции')
     if option == 0:
         prof_rur = ticker.df['RUB_sum'][sale_row_number] - \
                    sold_volume * ticker.df['ROE'][ticker.index_buy_deals[0]] * \
@@ -91,13 +91,13 @@ def profit_calculation(ticker, option, sale_row_number, sold_volume, i=0):
     ticker.df['ndfl'][sale_row_number] = ticker.ndfl
     ticker.df['prof_usd'][sale_row_number] = prof_usd
 
-    print('закончил profit_calculation')
+    # print('закончил profit_calculation')
 
     return ticker
 
 
 def outstanding_volume_price(ticker, error_array):
-    print('start outstanding_volume_price')
+    # print('start outstanding_volume_price')
     sum_in_usd = 0
     sum_in_rub = 0
     if len(ticker.buy_volume_array) != 0:
@@ -121,7 +121,7 @@ def outstanding_volume_price(ticker, error_array):
         ticker.profit_for_outstanding_volumes = 0
         ticker.average_price_rub = 0
         ticker.full_profit = int(ticker.prof_for_sold_securities)
-        print('закончил outstanding_volume_price')
+        # print('закончил outstanding_volume_price')
 
     if ticker.outstanding_volumes != sum(ticker.buy_volume_array):
         print(f"количество оставшихся бумаг {ticker.name} и полученных в результате подсчета не совпадают")
@@ -131,7 +131,7 @@ def outstanding_volume_price(ticker, error_array):
 
 
 def rub_securities_processing(ticker, error_array):
-    print('start rub_securities_processing')
+    # print('start rub_securities_processing')
 
     ticker.average_buy = ticker.buy_sum_for_rub_securities / ticker.total_buy
     ticker.average_sell = ticker.sell_sum_for_rub_securities / ticker.total_sell
@@ -155,6 +155,6 @@ def rub_securities_processing(ticker, error_array):
     ticker.full_profit = ticker.prof_for_sold_securities + ticker.profit_for_outstanding_volumes
     ticker.ndfl_full = ndfl_func(profit_for_outstanding_volumes)
 
-    print('закончил rub_securities_processing')
+    # print('закончил rub_securities_processing')
 
     return ticker, error_array
