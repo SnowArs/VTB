@@ -5,8 +5,8 @@ from main_new import filling_roe, main_func
 warnings.filterwarnings('ignore')
 
 
-async def fridom(task):
-    print(f'Started {task}')
+def fridom():
+
     df = pd.read_excel('BD\\FRIDOM.xlsx')
     df['date'] = pd.to_datetime(df['Расчеты'])
     df['B/S'], df['Символ'], df['Валюта'] = df['Операция'], df['Тикер'], df['валюта']
@@ -27,7 +27,7 @@ async def fridom(task):
 
     df.reset_index(drop=True, inplace=True)
     df = df[['date', 'Символ', 'B/S', 'Валюта', 'Price', 'Volume', 'Commission', 'Sum', 'ROE_index', 'ROE', 'RUB_sum']]
-    main_func(full_list_of_securities, df, broker, task)
+    main_func(full_list_of_securities, df, broker, )
 
 
 if __name__ == '__main__':

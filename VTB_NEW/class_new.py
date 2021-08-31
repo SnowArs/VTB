@@ -53,7 +53,6 @@ class Calculations:
             self = usd_eur_exchange()
         return self.current_price
 
-
     def rub_securities_processing(self, df_):
         if self.length > 4:
             board = 'TQCB'
@@ -129,11 +128,7 @@ class Ticker(Calculations):
 
     def stock_name(self):
         if self.currency == 'USD':
-            if self.broker == 'VTB':
-                if (self.raw_name[-4:] == '_SPB') | (self.raw_name[-3:] == '-RM'):
-                    stock_name = self.raw_name[:-4]
-            else:
-                stock_name = self.raw_name
+            stock_name = self.raw_name
         elif self.currency == 'HKD':
             stock_name = self.raw_name
             self.ratio = 10

@@ -5,11 +5,10 @@ from main_new import filling_roe, main_func
 warnings.filterwarnings('ignore')
 
 
-async def vtb(task):
-    print('Started VTB')
+def vtb():
     df = pd.read_excel('BD\\сделки_ВТБ_290821.xls', sheet_name='DealOwnsReport', header=3)
     df = df.loc[df['Тип сделки'] == 'Клиентская'].reset_index(drop=True)
-
+    df['Код инструмента'] = df['Код инструмента'].str.replace('-', '_').str.split('_').str[0]
     # так как сделики в течении дня происходят разными строкам требуется группировка
     df = df.groupby(['Дата вал.', 'Код инструмента', 'B/S', 'Валюта']).agg(
         Price=pd.NamedAgg(column='Цена', aggfunc='mean'),
@@ -22,7 +21,7 @@ async def vtb(task):
     broker = 'VTB'
     full_list_of_securities = df['Код инструмента'].unique().tolist()
     # full_list_of_securities = ['OGKB']
-    main_func(full_list_of_securities, df, broker, task)
+    main_func(full_list_of_securities, df, broker)
     return
 
 

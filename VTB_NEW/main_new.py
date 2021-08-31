@@ -35,7 +35,7 @@ def excel_saving(**kwargs):
 """""
 
 
-def main_func(full_list_of_securities, df, broker, task):
+def main_func(full_list_of_securities, df, broker):
     from prettytable import PrettyTable
     from prettytable import ALL
     total_ndfl_rus = 0
@@ -49,9 +49,9 @@ def main_func(full_list_of_securities, df, broker, task):
     mytable_rus = PrettyTable()
     mytable_rus.hrules = ALL
     # имена полей таблицы
-    field_names = ['Тикер', 'Куплено', 'Продано', 'Остаток', 'НДФЛ, РУБ', 'Прибыль в USD',
-                   'средняя цена', 'текущая цена', 'потенциальная прибыль', 'прибыль всех бумаг']
-    field_names_rus = field_names[0:5] + ['заф прибыль РУБ'] + field_names[6:]
+    field_names = ['Тикер', 'Куплено', 'Продано', 'Остаток', 'ндфл, руб', 'заф прибыль',
+                   'средняя цена', 'текущая цена', 'потенциальная прибыль', 'общая прибыль']
+    field_names_rus = field_names #дубли
     mytable.field_names = field_names
     mytable_rus.field_names = field_names_rus
     array_with_results = []
@@ -164,7 +164,6 @@ def main_func(full_list_of_securities, df, broker, task):
     print(f'НДФЛ по всем иностранным бумагам в РУБ:  {int(total_ndfl_non_rus)},'
           f'общая прибыль по всем бумагам в USD: {int(total_combined_profit_non_rus)}')
 
-    print(f'{task} FINNINSHED')
     return
 
 

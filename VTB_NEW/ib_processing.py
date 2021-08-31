@@ -5,8 +5,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-async def ib(task):
-    print(f'Started {task}')
+def ib():
+
     with open('BD\\ib_20210101_20210827.csv', encoding='utf-8', newline='') as File:
         reader = csv.reader(File)
         first = True
@@ -44,7 +44,7 @@ async def ib(task):
     df = df.drop(df.loc[df['B/S'] == ''].index)
     df.reset_index(drop=True, inplace=True)
     df = df[['date', 'Символ', 'B/S', 'Валюта', 'Price', 'Volume', 'Commission', 'Sum', 'ROE_index', 'ROE', 'RUB_sum']]
-    main_func(full_list_of_securities, df, broker, task)
+    main_func(full_list_of_securities, df, broker)
     return
 
 
