@@ -44,51 +44,22 @@ class Calculations:
             else:
                 self.current_price = data['Close'][0]
             return self
-
-        if self.currency == 'HKD':
-            self = hkd()
-        elif self.currency == 'RUR':
-            self = rur()
+        if len(self.name) > 10:
+            self.current_price = 0
         else:
-            self = usd_eur_exchange()
+            if self.currency == 'HKD':
+                self = hkd()
+            elif self.currency == 'RUR':
+                self = rur()
+            else:
+                self = usd_eur_exchange()
         return self.current_price
-
-    def rub_securities_processing(self, df_):
-        if self.length > 4:
-            board = 'TQCB'
-            market = 'bonds'
-            ratio = 10
-        else:
-            board = 'TQBR'
-            market = 'shares'
-            ratio = 1
-
-        buy_sum_for_rub_securities = \
-            df_.loc[df_.iloc[:, self.settings['buy_col']] == self.settings['buy_code'], 'RUB_sum'].sum()
-        sell_sum_for_rub_securities = \
-            df_.loc[df_.iloc[:, self.settings['buy_col']] == self.settings['sell_code'], 'RUB_sum'].sum()
-        average_buy = buy_sum_for_rub_securities / self.total_buy
-        average_sell = sell_sum_for_rub_securities / self.total_sell
-        current_price = self.get_current_price_rur(board, market, ratio)
-        if self.outstanding_volumes == 0:
-            prof_for_sold_securities = sell_sum_for_rub_securities - buy_sum_for_rub_securities
-            profit_for_outstanding_volumes = 0
-        elif math.isnan(average_sell):
-            prof_for_sold_securities = 0
-            average_sell = 0
-            profit_for_outstanding_volumes = (current_price - average_buy) * self.outstanding_volumes
-        else:
-            prof_for_sold_securities = sell_sum_for_rub_securities - self.total_sell * average_buy
-            profit_for_outstanding_volumes = (current_price - average_buy) * self.outstanding_volumes
-
-        full_profit = prof_for_sold_securities + profit_for_outstanding_volumes
-
-        return prof_for_sold_securities, average_buy, profit_for_outstanding_volumes, full_profit
 
 
 class Ticker(Calculations):
     def __init__(self, security_df, broker):
         self.settings = settings(broker)
+        self.df = security_df
         self.raw_name = security_df.iloc[:, self.settings['name']][0]
         self.index_buy_deals = \
             security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['buy_code']].index.array
@@ -104,11 +75,11 @@ class Ticker(Calculations):
         self.market = ''
         self.ratio = 1
         self.name = self.stock_name()
-        self.df = security_df
         self.current_price = round(self.get_current_price(self.board, self.market, self.ratio), 2)
         self.exchange_to_usd = self.exchange()
         self.average_roe_for_outstanding_volumes = 0
 
+        self.filled_row = 0
         self.ndfl = 0
         self.ndfl_full = 0
         self.full_profit = 0
@@ -128,7 +99,15 @@ class Ticker(Calculations):
 
     def stock_name(self):
         if self.currency == 'USD':
-            stock_name = self.raw_name
+            if self.broker == 'IB':
+                if (self.raw_name.endswith(' PR', 4, 7)) | (self.raw_name.endswith(' PR', 3, 6)) :
+                    stock_name = self.raw_name.replace(' PR', '-P')
+                # elif self.raw_name.endswith(' PR', 3, 6):
+                #     stock_name = self.raw_name.replace(' PR', '-P')
+                else:
+                    stock_name = self.raw_name
+            else:
+                stock_name = self.raw_name
         elif self.currency == 'HKD':
             stock_name = self.raw_name
             self.ratio = 10

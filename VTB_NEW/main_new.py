@@ -26,7 +26,7 @@ def excel_saving(**kwargs):
             file_closed = False
         except PermissionError:
             input(f"Необходимо закрыть файл {kwargs['path']}{kwargs['name']}.xls и нажать ENTER")
-    return
+    return df_to_save
 
 
 """"" 
@@ -148,11 +148,11 @@ def main_func(full_list_of_securities, df, broker):
     path_to_save = 'BD\\results_rus_'
     formula_list = {'df': pd.DataFrame(), 'arr': array_with_results_rus, 'name': broker, 'path': path_to_save,
                     'columns': field_names_rus}
-    excel_saving(**formula_list)
+    df_results = excel_saving(**formula_list)
     path_to_save = 'BD\\results_'
     formula_list = {'df': pd.DataFrame(), 'arr': array_with_results, 'name': broker, 'path': path_to_save,
                     'columns': field_names + ['aver_ROE']}
-    excel_saving(**formula_list)
+    df_results = excel_saving(**formula_list) # сохранение для иностранных бумаг
     errors_df = pd.DataFrame(error_arr)
     errors_df.to_excel(f'BD/ERRORS_{broker}.xls')
 
@@ -164,7 +164,7 @@ def main_func(full_list_of_securities, df, broker):
     print(f'НДФЛ по всем иностранным бумагам в РУБ:  {int(total_ndfl_non_rus)},'
           f'общая прибыль по всем бумагам в USD: {int(total_combined_profit_non_rus)}')
 
-    return
+    return df_results
 
 
 """"" 

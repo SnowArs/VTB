@@ -17,7 +17,7 @@ def culc(ticker, error_array):
                 ticker.index_buy_deals = ticker.index_buy_deals[1:]
                 break
             elif sold_volume_lef > 0:
-                ticker = profit_calculation(ticker, 0, sale_row_number, sold_volume, sold_volume)
+                ticker = profit_calculation(ticker, 0, sale_row_number, sold_volume)
                 ticker.buy_volume_array[0] = ticker.buy_volume_array[0] - sold_volume
                 break
             elif sold_volume_lef < 0:  # отрицательный объем
@@ -86,11 +86,19 @@ def profit_calculation(ticker, option, sale_row_number, sold_volume, i=0):
     ticker.ndfl = ndfl_func(prof_rur)
     ticker.ndfl_full += ticker.ndfl
     ticker.prof_for_sold_securities += prof_usd * ticker.exchange_to_usd
-
-    ticker.df['profit_rus'][sale_row_number] = prof_rur
-    ticker.df['ndfl'][sale_row_number] = ticker.ndfl
-    ticker.df['prof_usd'][sale_row_number] = prof_usd
-
+    row_to_fill = sale_row_number + i
+    #проверка чтобы не было перезаписи вычислений
+    if ticker.filled_row >= row_to_fill:
+        row_to_fill = ticker.filled_row + 1
+        ticker.filled_row = row_to_fill
+    if ticker.df.shape[0] == row_to_fill:
+        new_row = {'profit_rus': prof_rur, 'ndfl': ticker.ndfl, 'prof_usd': prof_usd}
+        ticker.df = ticker.df.append(new_row, ignore_index=True)
+    else:
+        ticker.df['profit_rus'][row_to_fill] = prof_rur
+        ticker.df['ndfl'][row_to_fill] = ticker.ndfl
+        ticker.df['prof_usd'][row_to_fill] = prof_usd
+    ticker.filled_row = row_to_fill
     # print('закончил profit_calculation')
 
     return ticker
@@ -104,14 +112,15 @@ def outstanding_volume_price(ticker, error_array):
         for number, line in enumerate(ticker.index_buy_deals):
             sum_in_usd += ticker.buy_volume_array[number] * ticker.df['Price'][line]
             sum_in_rub += ticker.buy_volume_array[number] * ticker.df['Price'][line] * ticker.df['ROE'][line]
-        ticker.average_price_usd = sum_in_usd / sum(ticker.buy_volume_array)
-        ticker.average_price_rub = sum_in_rub / sum(ticker.buy_volume_array)
-        ticker.average_roe_for_outstanding_volumes = ticker.average_price_rub/ticker.average_price_usd
+        ticker.average_roe_for_outstanding_volumes = round(sum_in_rub/sum_in_usd, 2)
+        ticker.average_price_usd = \
+            round(sum_in_rub/(ticker.average_roe_for_outstanding_volumes * sum(ticker.buy_volume_array)), 2)
+        ticker.average_price_rub = round(sum_in_rub / sum(ticker.buy_volume_array), 2)
         try:
             ticker.profit_for_outstanding_volumes = (ticker.current_price - ticker.average_price_usd) \
                                                     * ticker.outstanding_volumes * ticker.exchange_to_usd
             ticker.full_profit = int(ticker.prof_for_sold_securities + ticker.profit_for_outstanding_volumes - \
-                                      ndfl_func(ticker.profit_for_outstanding_volumes))
+                                     ndfl_func(ticker.profit_for_outstanding_volumes))
         except IndexError:
             ticker.profit_for_outstanding_volumes = 'N/A'
             ticker.full_profit = 'N/A'
@@ -144,14 +153,14 @@ def rub_securities_processing(ticker, error_array):
         ticker.prof_for_sold_securities = 0
         ticker.average_sell = 0
         profit_for_outstanding_volumes = (ticker.current_price - ticker.average_buy) * ticker.outstanding_volumes
-        ticker.profit_for_outstanding_volumes = profit_for_outstanding_volumes -\
+        ticker.profit_for_outstanding_volumes = profit_for_outstanding_volumes - \
                                                 ndfl_func(profit_for_outstanding_volumes)
     else:
         prof_for_sold_securities = ticker.sell_sum_for_rub_securities - ticker.total_sell * ticker.average_buy
-        ticker.prof_for_sold_securities =prof_for_sold_securities - ndfl_func(prof_for_sold_securities)
+        ticker.prof_for_sold_securities = prof_for_sold_securities - ndfl_func(prof_for_sold_securities)
         profit_for_outstanding_volumes = (ticker.current_price - ticker.average_buy) * ticker.outstanding_volumes
-        ticker.profit_for_outstanding_volumes =profit_for_outstanding_volumes -\
-                                               ndfl_func(profit_for_outstanding_volumes)
+        ticker.profit_for_outstanding_volumes = profit_for_outstanding_volumes - \
+                                                ndfl_func(profit_for_outstanding_volumes)
     ticker.full_profit = ticker.prof_for_sold_securities + ticker.profit_for_outstanding_volumes
     ticker.ndfl_full = ndfl_func(profit_for_outstanding_volumes)
 

@@ -1,50 +1,74 @@
 import csv
 from main_new import *
 import warnings
-
+import modules
+import math
 warnings.filterwarnings('ignore')
 
 
 def ib():
 
-    with open('BD\\ib_20210101_20210827.csv', encoding='utf-8', newline='') as File:
+    path = r'BD\IB\U3557843_20210101_20210831.csv'
+    # file = modules.find_latest_file(path)
+    with open(path, encoding='utf-8', newline='') as File:
         reader = csv.reader(File)
-        first = True
+        first_deal = True
+        first_open = True
         for row in reader:
             filter_ = ('Total', 'SubTotal', 'Header')
-            if 'Сделки' in row and first:
-                df = pd.DataFrame(columns=row)
-                first = False
-            elif 'Сделки' in row and not first:
+            if 'Сделки' in row and first_deal:
+                df2021 = pd.DataFrame(columns=row)
+                first_deal = False
+            elif 'Открытые позиции' in row and first_open:
+                df_check = pd.DataFrame(columns=row)
+                first_open = False
+            elif 'Сделки' in row and not first_deal:
                 if not (set(filter_) & set(row)):
-                    df.loc[len(df)] = row
-
-    df['date'] = df['Дата/Время'].str.split(',').str.get(0)
-    df['date'] = pd.to_datetime(df['date'])
-    df['B/S'] = df['Код'].str.split(';').str.get(0)
-    df.loc[df['Количество'].str.contains(','), 'Количество'] = \
-        df.loc[df['Количество'].str.contains(','), 'Количество'].str.replace(',', '')
-    df = df.astype({'Цена транзакции': 'float', 'Комиссия/плата': 'float', 'Выручка': 'float', 'Количество': 'float'})
-    df['Количество'] = df['Количество'].abs()
-    df['Выручка'] = df['Выручка'].abs()
-    df = df.groupby(['date', 'Символ', 'B/S', 'Валюта']).agg(
+                    df2021.loc[len(df2021)] = row
+            elif 'Открытые позиции' in row and not first_open:
+                if not (set(filter_) & set(row)):
+                    df_check.loc[len(df_check)] = row
+    check_list_before_proseccing = df_check['Символ'].unique().tolist()
+    df2021['date'] = df2021['Дата/Время'].str.split(',').str.get(0)
+    df2021['date'] = pd.to_datetime(df2021['date'])
+    df2021['B/S'] = df2021['Код'].str.split(';').str.get(0)
+    df2021.loc[df2021['Количество'].str.contains(','), 'Количество'] = \
+        df2021.loc[df2021['Количество'].str.contains(','), 'Количество'].str.replace(',', '')
+    df2021 = df2021.astype({'Цена транзакции': 'float', 'Комиссия/плата': 'float', 'Выручка': 'float', 'Количество': 'float'})
+    df2021['Количество'] = df2021['Количество'].abs()
+    df2021['Выручка'] = df2021['Выручка'].abs()
+    # df2021.loc[df2021['Символ'].endswith['%']] = df2021['Символ'].str.rsplit(' ', 1)
+    df2021 = df2021.groupby(['date', 'Символ', 'B/S', 'Валюта']).agg(
         Price=pd.NamedAgg(column='Цена транзакции', aggfunc='mean'),
         Volume=pd.NamedAgg(column='Количество', aggfunc='sum'),
         Commission=pd.NamedAgg(column='Комиссия/плата', aggfunc='sum'),
         Sum=pd.NamedAgg(column='Выручка', aggfunc='sum')
     )
-    df.reset_index(drop=False, inplace=True)
-
-    full_list_of_securities = df.iloc[:, 1].unique().tolist()
-    # full_list_of_securities = ['MAC']
-    df = filling_roe(df, 0, 3)
+    df2021.reset_index(drop=False, inplace=True)
+    df2021 = filling_roe(df2021, 0, 3)
     broker = 'IB'
     df2020 = pd.read_excel('BD\\ib2020.xls')
-    df = df2020.append(df, ignore_index=True, sort=True)
-    df = df.drop(df.loc[df['B/S'] == ''].index)
-    df.reset_index(drop=True, inplace=True)
+    df = df2020.append(df2021, ignore_index=True, sort=True)
+    df = df.drop(df.loc[(df['B/S'] == '') | (df['B/S'].isna())].index)
     df = df[['date', 'Символ', 'B/S', 'Валюта', 'Price', 'Volume', 'Commission', 'Sum', 'ROE_index', 'ROE', 'RUB_sum']]
-    main_func(full_list_of_securities, df, broker)
+    df.loc[df['Символ'].str.endswith('%'), 'Символ'] = df['Символ'].str.replace(' ', '_')
+    df.loc[df['Символ'].str.endswith('%'), 'Символ'] = df['Символ'].str.rsplit('_', 1).str[0]
+    df.loc[df['Символ'].str.endswith(' P'), 'Символ'] = df['Символ'].str.replace(' ', '_')
+    df.loc[df['Символ'].str.endswith(' C'), 'Символ'] = df['Символ'].str.replace(' ', '_')
+    df.loc[df['Символ'].str.contains('/'), 'Символ'] = df['Символ'].str.replace('/', '_')
+    df.sort_values(by=['Символ', 'date'], inplace=True)
+    df.reset_index(drop=True, inplace=True)
+    full_list_of_securities = df.iloc[:, 1].unique().tolist()
+    # full_list_of_securities = ['CSAL 8 1/4 10/15/23 WAD7']
+    exception_arr = ['OXY.WAR', 'WPG']
+    full_list_of_securities = list(set(full_list_of_securities) ^ set(exception_arr))
+    df_results = main_func(full_list_of_securities, df, broker)
+
+    # проврка, что с остатками правильные бумаги
+    df_results = df_results.loc[df_results['Остаток'] > 0]
+    check_after_results = df_results['Тикер'].unique().tolist()
+    missed_tickers = set(check_list_before_proseccing) ^ set(check_after_results)
+    print(f'различия по бумагам с остатками в информации от брокера и после обработки : {missed_tickers}')
     return
 
 

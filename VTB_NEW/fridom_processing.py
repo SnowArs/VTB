@@ -27,7 +27,7 @@ def fridom():
 
     df.reset_index(drop=True, inplace=True)
     df = df[['date', 'Символ', 'B/S', 'Валюта', 'Price', 'Volume', 'Commission', 'Sum', 'ROE_index', 'ROE', 'RUB_sum']]
-    main_func(full_list_of_securities, df, broker, )
+    main_func(full_list_of_securities, df, broker)
 
 
 if __name__ == '__main__':

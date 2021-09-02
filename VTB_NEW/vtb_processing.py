@@ -20,7 +20,7 @@ def vtb():
     df = filling_roe(df, 0, 3)  # заполнение курса ЦБ по каждой из операций
     broker = 'VTB'
     full_list_of_securities = df['Код инструмента'].unique().tolist()
-    # full_list_of_securities = ['OGKB']
+    # full_list_of_securities = ['FTCH']
     main_func(full_list_of_securities, df, broker)
     return
 
