@@ -141,18 +141,33 @@ def main_func(full_list_of_securities, df, broker):
                                          round(ticker.profit_for_outstanding_volumes * ticker.exchange_to_usd, 2),
                                          int(ticker.full_profit * ticker.exchange_to_usd)]
                 mytable.add_row(NON_RUS_TABLE_COLUMNS)
-                array_with_results.append(NON_RUS_TABLE_COLUMNS + [ticker.average_roe_for_outstanding_volumes])
+                array_with_results.append(NON_RUS_TABLE_COLUMNS + [ticker.average_roe_for_outstanding_volumes,
+                                                                   ticker.broker, ticker.currency, ticker.full_name,
+                                                                   ticker.type])
                 total_ndfl_non_rus, total_combined_profit_non_rus = \
                     append_to_total_profit(ticker, total_ndfl_non_rus, total_combined_profit_non_rus)
     # сохранение результатов
     path_to_save = 'BD\\results_rus_'
     formula_list = {'df': pd.DataFrame(), 'arr': array_with_results_rus, 'name': broker, 'path': path_to_save,
                     'columns': field_names_rus}
-    df_results = excel_saving(**formula_list)
+    df_results_rus = excel_saving(**formula_list)
     path_to_save = 'BD\\results_'
     formula_list = {'df': pd.DataFrame(), 'arr': array_with_results, 'name': broker, 'path': path_to_save,
                     'columns': field_names + ['aver_ROE']}
-    df_results = excel_saving(**formula_list) # сохранение для иностранных бумаг
+    df_results = excel_saving(**formula_list)  # сохранение для иностранных бумаг
+    # сохранение позиций с остаткоми
+    path_to_save = 'BD\\results_rus_with_volumes'
+    df_results_rus = df_results_rus.loc[df_results_rus['Остаток'] > 0]
+    formula_list = {'df': df_results_rus, 'arr': [], 'name': broker, 'path': path_to_save,
+                    'columns': field_names_rus}
+    df_results_rus = excel_saving(**formula_list)
+
+    path_to_save = 'BD\\results_with_volumes'
+    df_results = df_results.loc[df_results['Остаток'] > 0]
+    formula_list = {'df': df_results, 'arr': [], 'name': broker, 'path': path_to_save,
+                    'columns': field_names + ['aver_ROE', 'брокер', 'валюта', 'название компании', 'признак']}
+
+
     errors_df = pd.DataFrame(error_arr)
     errors_df.to_excel(f'BD/ERRORS_{broker}.xls')
 

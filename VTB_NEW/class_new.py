@@ -5,7 +5,7 @@ import apimoex
 import pandas as pd
 from tradingview_ta import TA_Handler, Interval, Exchange
 from settings import settings
-
+import asynco_new
 
 class Calculations:
 
@@ -34,16 +34,23 @@ class Calculations:
             return self
 
         def usd_eur_exchange():
+        #     name = asynco_new.main(self.name)
+        #     print(name)
             security_name = yf.Ticker(self.name)
             data = security_name.history(period='1d')
             if data.empty:
                 print(f'no info for {self.name}')
                 self.current_price = -100
+                self.full_name = 'N/A'
+                return self
             elif math.isnan(data['Close'][0]):
                 self.current_price = data['Close'][1]
             else:
                 self.current_price = data['Close'][0]
+            self.full_name = security_name.info['shortName']
+            self.type = 'Иностранные акции'
             return self
+
         if len(self.name) > 10:
             self.current_price = 0
         else:
@@ -71,6 +78,8 @@ class Ticker(Calculations):
             security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code']].index.array
         self.currency = security_df['Валюта'][0]
         self.broker = broker
+        self.full_name = ''
+        self.type = ''
         self.board = ''
         self.market = ''
         self.ratio = 1
@@ -102,12 +111,12 @@ class Ticker(Calculations):
             if self.broker == 'IB':
                 if (self.raw_name.endswith(' PR', 4, 7)) | (self.raw_name.endswith(' PR', 3, 6)) :
                     stock_name = self.raw_name.replace(' PR', '-P')
-                # elif self.raw_name.endswith(' PR', 3, 6):
-                #     stock_name = self.raw_name.replace(' PR', '-P')
                 else:
                     stock_name = self.raw_name
             else:
                 stock_name = self.raw_name
+        elif self.currency == 'GBP':
+            stock_name = self.raw_name+'.L'
         elif self.currency == 'HKD':
             stock_name = self.raw_name
             self.ratio = 10

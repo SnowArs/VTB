@@ -8,9 +8,11 @@ warnings.filterwarnings('ignore')
 
 def ib():
 
-    path = r'BD\IB\U3557843_20210101_20210831.csv'
+    file = r'BD\IB\U3557843_20210101_20210902.csv'
+    # path = r'BD\IB'
     # file = modules.find_latest_file(path)
-    with open(path, encoding='utf-8', newline='') as File:
+    with open(file, encoding='utf-8', newline='', errors='ignore') as File:
+    # with open(file, newline='') as File:
         reader = csv.reader(File)
         first_deal = True
         first_open = True
@@ -47,7 +49,7 @@ def ib():
     df2021.reset_index(drop=False, inplace=True)
     df2021 = filling_roe(df2021, 0, 3)
     broker = 'IB'
-    df2020 = pd.read_excel('BD\\ib2020.xls')
+    df2020 = pd.read_excel('BD\\IB\\ib2020.xls')
     df = df2020.append(df2021, ignore_index=True, sort=True)
     df = df.drop(df.loc[(df['B/S'] == '') | (df['B/S'].isna())].index)
     df = df[['date', 'Символ', 'B/S', 'Валюта', 'Price', 'Volume', 'Commission', 'Sum', 'ROE_index', 'ROE', 'RUB_sum']]
@@ -59,8 +61,8 @@ def ib():
     df.sort_values(by=['Символ', 'date'], inplace=True)
     df.reset_index(drop=True, inplace=True)
     full_list_of_securities = df.iloc[:, 1].unique().tolist()
-    # full_list_of_securities = ['CSAL 8 1/4 10/15/23 WAD7']
-    exception_arr = ['OXY.WAR', 'WPG']
+    # full_list_of_securities = ['FRES']
+    exception_arr = ['OXY.WAR', 'WPG', 'SCO']
     full_list_of_securities = list(set(full_list_of_securities) ^ set(exception_arr))
     df_results = main_func(full_list_of_securities, df, broker)
 

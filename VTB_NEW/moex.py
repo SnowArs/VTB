@@ -18,6 +18,9 @@ def fill_roe(roe_date, currency, date_min):
         elif currency == "HKD":
             id_code = 'R01200'
             roe_ = 10
+        elif currency == "GBP":
+            id_code = 'R01035'
+            roe_ = 1
         else:
             id_code = 'R01239'
             roe_ = 1

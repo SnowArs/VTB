@@ -6,7 +6,7 @@ warnings.filterwarnings('ignore')
 
 
 def vtb():
-    df = pd.read_excel('BD\\сделки_ВТБ_290821.xls', sheet_name='DealOwnsReport', header=3)
+    df = pd.read_excel('BD\\VTB\\сделки_ВТБ_020921.xls', sheet_name='DealOwnsReport', header=3)
     df = df.loc[df['Тип сделки'] == 'Клиентская'].reset_index(drop=True)
     df['Код инструмента'] = df['Код инструмента'].str.replace('-', '_').str.split('_').str[0]
     # так как сделики в течении дня происходят разными строкам требуется группировка
