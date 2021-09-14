@@ -1,14 +1,15 @@
 import csv
+
+from VTB_NEW.modules import roe_table_update
 from main_new import *
 import warnings
-import modules
-import math
+
 warnings.filterwarnings('ignore')
 
 
 def ib():
 
-    file = r'BD\IB\U3557843_20210101_20210902.csv'
+    file = r'BD\IB\U3557843_20210101_20210910.csv'
     # path = r'BD\IB'
     # file = modules.find_latest_file(path)
     with open(file, encoding='utf-8', newline='', errors='ignore') as File:
@@ -29,7 +30,11 @@ def ib():
                     df2021.loc[len(df2021)] = row
             elif 'Открытые позиции' in row and not first_open:
                 if not (set(filter_) & set(row)):
-                    df_check.loc[len(df_check)] = row
+                    try:
+                        df_check.loc[len(df_check)] = row
+                    except ValueError:
+                        print(f'ValueError {row}')
+                        continue
     check_list_before_proseccing = df_check['Символ'].unique().tolist()
     df2021['date'] = df2021['Дата/Время'].str.split(',').str.get(0)
     df2021['date'] = pd.to_datetime(df2021['date'])
@@ -47,7 +52,7 @@ def ib():
         Sum=pd.NamedAgg(column='Выручка', aggfunc='sum')
     )
     df2021.reset_index(drop=False, inplace=True)
-    df2021 = filling_roe(df2021, 0, 3)
+    df2021 = roe_table_update(df2021, 0, 3)
     broker = 'IB'
     df2020 = pd.read_excel('BD\\IB\\ib2020.xls')
     df = df2020.append(df2021, ignore_index=True, sort=True)
@@ -58,15 +63,17 @@ def ib():
     df.loc[df['Символ'].str.endswith(' P'), 'Символ'] = df['Символ'].str.replace(' ', '_')
     df.loc[df['Символ'].str.endswith(' C'), 'Символ'] = df['Символ'].str.replace(' ', '_')
     df.loc[df['Символ'].str.contains('/'), 'Символ'] = df['Символ'].str.replace('/', '_')
+
     df.sort_values(by=['Символ', 'date'], inplace=True)
     df.reset_index(drop=True, inplace=True)
     full_list_of_securities = df.iloc[:, 1].unique().tolist()
-    # full_list_of_securities = ['FRES']
     exception_arr = ['OXY.WAR', 'WPG', 'SCO']
+    # full_list_of_securities = ['MAC']
+    # exception_arr = []
     full_list_of_securities = list(set(full_list_of_securities) ^ set(exception_arr))
     df_results = main_func(full_list_of_securities, df, broker)
 
-    # проврка, что с остатками правильные бумаги
+    # проверка, что с остатками правильные бумаги
     df_results = df_results.loc[df_results['Остаток'] > 0]
     check_after_results = df_results['Тикер'].unique().tolist()
     missed_tickers = set(check_list_before_proseccing) ^ set(check_after_results)

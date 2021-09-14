@@ -1,30 +1,38 @@
 from moex import ndfl_func
 import math
+import settings
 
 
-def culc(ticker, error_array):
+# подсчет купленных и проданных позиций по принципу FIFO
+def culc(ticker, error_array, prof_per_year_dict, ndfl_per_year_dict):
     # print('начал выполнение culc функции')
     index_to_del = []
     for sale_row_number in ticker.index_sell_deals:
         stop = False
-        sold_volume = ticker.df['Volume'][sale_row_number]
+        sold_volume = ticker.df['Volume'][sale_row_number] * ticker.volume_mult
         bought_volume = ticker.buy_volume_array[0]
         sold_volume_lef = bought_volume - sold_volume
         while not stop:
             if sold_volume_lef == 0:
-                ticker = profit_calculation(ticker, 0, sale_row_number, sold_volume)
+                ticker, prof_per_year_dict, ndfl_per_year_dict \
+                    = profit_calculation(ticker, 0, sale_row_number, sold_volume, prof_per_year_dict,
+                                         ndfl_per_year_dict)
                 ticker.buy_volume_array = ticker.buy_volume_array[1:]
                 ticker.index_buy_deals = ticker.index_buy_deals[1:]
                 break
             elif sold_volume_lef > 0:
-                ticker = profit_calculation(ticker, 0, sale_row_number, sold_volume)
+                ticker, prof_per_year_dict, ndfl_per_year_dict \
+                    = profit_calculation(ticker, 0, sale_row_number, sold_volume, prof_per_year_dict,
+                                         ndfl_per_year_dict)
                 ticker.buy_volume_array[0] = ticker.buy_volume_array[0] - sold_volume
                 break
             elif sold_volume_lef < 0:  # отрицательный объем
                 for i, buy_ind in enumerate(ticker.index_buy_deals):
                     if i == 0:
                         sold_volume_in_loop = ticker.buy_volume_array[0]
-                        ticker = profit_calculation(ticker, 1, sale_row_number, sold_volume_in_loop, i)
+                        ticker, prof_per_year_dict, ndfl_per_year_dict \
+                            = profit_calculation(ticker, 1, sale_row_number, sold_volume_in_loop, prof_per_year_dict,
+                                                 ndfl_per_year_dict, i)
                         sold_volume_lef = sold_volume - sold_volume_in_loop
                         ticker.buy_volume_array[0] = 0
                         index_to_del.append(i)
@@ -32,18 +40,24 @@ def culc(ticker, error_array):
                         bought_amount_left = ticker.buy_volume_array[i] - sold_volume_lef
                         if bought_amount_left < 0:
                             sold_volume_in_loop = ticker.buy_volume_array[i]
-                            ticker = profit_calculation(ticker, 2, sale_row_number, sold_volume_in_loop, i)
+                            ticker, prof_per_year_dict, ndfl_per_year_dict =\
+                                profit_calculation(ticker, 2, sale_row_number, sold_volume_in_loop, prof_per_year_dict,
+                                                   ndfl_per_year_dict, i)
                             sold_volume_lef = sold_volume_lef - sold_volume_in_loop
                             index_to_del.append(i)
                         elif bought_amount_left > 0:
                             sold_volume_in_loop = sold_volume_lef
-                            ticker = profit_calculation(ticker, 1, sale_row_number, sold_volume_in_loop, i)
+                            ticker, prof_per_year_dict, ndfl_per_year_dict \
+                                = profit_calculation(ticker, 1, sale_row_number, sold_volume_in_loop,
+                                                     prof_per_year_dict, ndfl_per_year_dict, i)
                             ticker.buy_volume_array[i] = ticker.buy_volume_array[i] - sold_volume_lef
                             stop = True
                             break
                         elif bought_amount_left == 0:
                             sold_volume_in_loop = sold_volume_lef
-                            ticker = profit_calculation(ticker, 2, sale_row_number, sold_volume_in_loop, i)
+                            ticker, prof_per_year_dict, ndfl_per_year_dict \
+                                = profit_calculation(ticker, 2, sale_row_number, sold_volume_in_loop,
+                                                     prof_per_year_dict, ndfl_per_year_dict, i)
                             index_to_del.append(i)
                             ticker.buy_volume_array[i] = 0
                             stop = True
@@ -53,29 +67,32 @@ def culc(ticker, error_array):
     if ticker.outstanding_volumes != sum(ticker.buy_volume_array):
         print(f"количество оставшихся бумаг {ticker.name} и полученных в результате подсчета не совпадают")
         error_array.append(ticker.name)
+
     # print('закончил выполнение culc функции')
-    return ticker, error_array
+    return ticker, error_array, prof_per_year_dict, ndfl_per_year_dict
 
 
-def profit_calculation(ticker, option, sale_row_number, sold_volume, i=0):
+# вычисление профита по каждой сделке в зависимости от остатка бумаг
+def profit_calculation(ticker, option, sale_row_number, sold_volume, prof_per_year_dict, ndfl_per_year_dict, i=0):
+    sets = settings.settings(ticker.broker)
     # print('начал выполнение profit_calculation функции')
-    if option == 0:
+    if option == 0:  # разница бумаг 0 или положительная
         prof_rur = ticker.df['RUB_sum'][sale_row_number] - \
                    sold_volume * ticker.df['ROE'][ticker.index_buy_deals[0]] * \
-                   ticker.df['Price'][ticker.index_buy_deals[0]]
+                   ticker.df['Price'][ticker.index_buy_deals[0]] * ticker.bonds_mult
         prof_usd = ticker.df['Sum'][sale_row_number] - \
-                   sold_volume * ticker.df['Price'][ticker.index_buy_deals[0]] - \
+                   sold_volume * ticker.df['Price'][ticker.index_buy_deals[0]] * ticker.bonds_mult - \
                    ndfl_func(prof_rur) / ticker.df['ROE'][sale_row_number]
 
-    elif option == 1:
+    elif option == 1:  # разница бумаг отрицательная, первая итерация
         buy_row_number = ticker.index_buy_deals[i]
         prof_rur = sold_volume / ticker.df['Volume'][sale_row_number] * ticker.df['RUB_sum'][sale_row_number] - \
                    sold_volume * ticker.df['ROE'][buy_row_number] * ticker.df['Price'][buy_row_number]
-        prof_usd = sold_volume * ticker.df['Price'][sale_row_number] - sold_volume \
-                   * ticker.df['Price'][buy_row_number] - ndfl_func(prof_rur) / ticker.df['ROE'][
+        prof_usd = sold_volume * ticker.df['Price'][sale_row_number] - sold_volume * \
+                   ticker.df['Price'][buy_row_number] - ndfl_func(prof_rur) / ticker.df['ROE'][
                        sale_row_number]
 
-    elif option == 2:
+    elif option == 2:  # разница бумаг отрицательная, следующие  итерации
         prof_rur = sold_volume / ticker.df['Volume'][sale_row_number] * ticker.df['RUB_sum'][sale_row_number] - \
                    sold_volume * ticker.df.iloc[ticker.index_buy_deals[i]]['ROE'] * \
                    ticker.df.iloc[ticker.index_buy_deals[i]]['Price']
@@ -87,7 +104,7 @@ def profit_calculation(ticker, option, sale_row_number, sold_volume, i=0):
     ticker.ndfl_full += ticker.ndfl
     ticker.prof_for_sold_securities += prof_usd * ticker.exchange_to_usd
     row_to_fill = sale_row_number + i
-    #проверка чтобы не было перезаписи вычислений
+    # проверка чтобы не было перезаписи вычислений в таблице каждой бумаги, чтобы проще делать проверку вычислений
     if ticker.filled_row >= row_to_fill:
         row_to_fill = ticker.filled_row + 1
         ticker.filled_row = row_to_fill
@@ -100,10 +117,12 @@ def profit_calculation(ticker, option, sale_row_number, sold_volume, i=0):
         ticker.df['prof_usd'][row_to_fill] = prof_usd
     ticker.filled_row = row_to_fill
     # print('закончил profit_calculation')
+    prof_per_year_dict[str(ticker.df.iloc[:, sets['Дата']][sale_row_number].year)].append(round(prof_usd, 2))
+    ndfl_per_year_dict[str(ticker.df.iloc[:, sets['Дата']][sale_row_number].year)].append(round(ndfl_func(prof_rur), 2))
+    return ticker, prof_per_year_dict, ndfl_per_year_dict
 
-    return ticker
 
-
+# подсчет прибыли по оставшимся бумагам. исходя из их средней цены и текущей цены
 def outstanding_volume_price(ticker, error_array):
     # print('start outstanding_volume_price')
     sum_in_usd = 0
@@ -112,14 +131,14 @@ def outstanding_volume_price(ticker, error_array):
         for number, line in enumerate(ticker.index_buy_deals):
             sum_in_usd += ticker.buy_volume_array[number] * ticker.df['Price'][line]
             sum_in_rub += ticker.buy_volume_array[number] * ticker.df['Price'][line] * ticker.df['ROE'][line]
-        ticker.average_roe_for_outstanding_volumes = round(sum_in_rub/sum_in_usd, 2)
+        ticker.average_roe_for_outstanding_volumes = round(sum_in_rub / sum_in_usd, 2)
         ticker.average_price_usd = \
-            round(sum_in_rub/(ticker.average_roe_for_outstanding_volumes * sum(ticker.buy_volume_array)), 2)
+            round(sum_in_rub / (ticker.average_roe_for_outstanding_volumes * sum(ticker.buy_volume_array)), 2)
         ticker.average_price_rub = round(sum_in_rub / sum(ticker.buy_volume_array), 2)
         try:
             ticker.profit_for_outstanding_volumes = (ticker.current_price - ticker.average_price_usd) \
                                                     * ticker.outstanding_volumes * ticker.exchange_to_usd
-            ticker.full_profit = int(ticker.prof_for_sold_securities + ticker.profit_for_outstanding_volumes - \
+            ticker.full_profit = int(ticker.prof_for_sold_securities + ticker.profit_for_outstanding_volumes -
                                      ndfl_func(ticker.profit_for_outstanding_volumes))
         except IndexError:
             ticker.profit_for_outstanding_volumes = 'N/A'
@@ -139,6 +158,7 @@ def outstanding_volume_price(ticker, error_array):
     return ticker, error_array
 
 
+# расчет прибыли по российским бумагам, где нет валютной переоценки
 def rub_securities_processing(ticker, error_array):
     # print('start rub_securities_processing')
 

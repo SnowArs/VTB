@@ -52,3 +52,11 @@ async def main(ticker):
 #     await taskA
 #
 # asyncio.run(main())
+
+# for name in array_with_results:
+#     name_arr.append([name[0], name[13]])
+# print(name_arr)
+# [['FRHC', ''], ['HOLX', 'Hologic, Inc.'], ['TEF', ''], ['CACI', ''], ['CPNG', ''], ['FEYE', 'FireEye, Inc.'], ['CRUS', ''], ['IIVI', ''], ['OLO', ''], ['ACVA', 'ACV Auctions Inc.'], ['DOCN', ''], ['VZIO', ''], ['DSGN', 'Design Therapeutics, Inc.'], ['ACHL', ''], ['COUR', ''], ['ALKT', 'Alkami Technology, Inc.'], ['APP', 'Applovin Corporation'], ['TSP', ''], ['AKYA', 'Akoya BioSciences, Inc.'], ['RXRX', ''], ['DV', ''], ['PATH', 'UiPath, Inc.'], ['ZY', 'Zymergen Inc.'], ['RAIN', 'Rain Therapeutics Inc.'], ['VACC', 'Vaccitech plc'], ['TALS', 'Talaris Therapeutics, Inc.'], ['GLBE', ''], ['SMWB', 'Similarweb Ltd.'], ['PAY', 'Paymentus Holdings, Inc.'], ['MQ', 'Marqeta, Inc.'], ['MNDY', 'monday.com Ltd.'], ['WKME', 'WalkMe Ltd.'], ['VERV', 'Verve Therapeutics, Inc.'], ['CYT', 'Cyteir Therapeutics, Inc.'], ['CFLT', 'Confluent, Inc.'], ['DOCS', 'Doximity, Inc.'], ['RPID', 'Rapid Micro Biosystems, Inc.'], ['SGHT', 'Sight Sciences, Inc.'], ['BLND', 'Blend Labs, Inc.'], ['BASE', 'Couchbase, Inc.'], ['CTKB', 'Cytek Biosciences, Inc.'], ['DUOL', 'Duolingo, Inc.'], ['WLL', 'Whiting Petroleum Corporation'], ['KTOS', 'Kratos Defense & Security Solut'], ['MU', 'Micron Technology, Inc.'], ['FDX', 'FedEx Corporation']]
+# df_to_save = pd.DataFrame(name_arr, columns=['Тикер', 'Название компании'])
+# df_to_save = df_to_save.loc[df_to_save['Название компании'] !='']
+# df_to_save.to_excel('Company_names.xls')

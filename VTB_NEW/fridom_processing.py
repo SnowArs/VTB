@@ -1,6 +1,7 @@
 import pandas as pd
 import warnings
-from main_new import filling_roe, main_func
+from main_new import main_func
+from VTB_NEW.modules import roe_table_update
 
 warnings.filterwarnings('ignore')
 
@@ -22,7 +23,7 @@ def fridom():
 
     full_list_of_securities = df.iloc[:, 1].unique().tolist()
     # full_list_of_securities = ['MAC']
-    df = filling_roe(df, 0, 3)
+    df = roe_table_update(df, 0, 3)
     broker = 'FRIDOM'
 
     df.reset_index(drop=True, inplace=True)
