@@ -13,7 +13,7 @@ def sber():
              'Валюта', 'Курс', 'Комиссия торговой системы', 'Комиссия банка',
              'Сумма зачисления/списания', 'Тип сделки']]
     df['Комиссия'] = df['Комиссия торговой системы'] + df['Комиссия банка']
-    # df['Дата расчётов'] = df['Дата расчётов'].str.split('_').str[0]
+    df['Дата расчётов'] = df['Дата расчётов'].dt.date
     # так как сделики в течении дня происходят разными строкам требуется группировка
     df = df.groupby(['Дата расчётов', 'Код финансового инструмента', 'Операция', 'Валюта']).agg(
         Price=pd.NamedAgg(column='Цена', aggfunc='mean'),
@@ -24,9 +24,13 @@ def sber():
     )
     df.reset_index(drop=False, inplace=True)
     df = roe_table_update(df, 0, 3)  # заполнение курса ЦБ по каждой из операций
-    broker = 'VTB'
-    full_list_of_securities = df['Код инструмента'].unique().tolist()
-    # full_list_of_securities = ['FTCH']
+    broker = 'SBER'
+    # full_list_of_securities = df['Код финансового инструмента'].unique().tolist()
+    # exception_arr = ['26208^', 'MOEX', 'RU000A0ZZ547', 'CHMF', 'LSRG', 'MTSS', 'RU000A0JV8Q2', 'RU000A100YD8',
+    #                  'RU000A0JWHA4', 'RU000A0ZYYN4', 'XS1383922876', 'XS1639490918']
+    full_list_of_securities = ['DE000A19YDA9']
+    exception_arr = []
+    full_list_of_securities = list(set(full_list_of_securities) ^ set(exception_arr))
     main_func(full_list_of_securities, df, broker)
     return
 

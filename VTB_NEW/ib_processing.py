@@ -9,7 +9,7 @@ warnings.filterwarnings('ignore')
 
 def ib():
 
-    file = r'BD\IB\U3557843_20210101_20210910.csv'
+    file = r'BD\IB\U3557843_20210101_20210923.csv'
     # path = r'BD\IB'
     # file = modules.find_latest_file(path)
     with open(file, encoding='utf-8', newline='', errors='ignore') as File:

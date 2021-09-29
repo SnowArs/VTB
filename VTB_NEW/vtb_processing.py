@@ -7,7 +7,7 @@ warnings.filterwarnings('ignore')
 
 
 def vtb():
-    df = pd.read_excel('BD\\VTB\\сделки_ВТБ_110921.xls', sheet_name='DealOwnsReport', header=3)
+    df = pd.read_excel('BD\\VTB\\сделки_ВТБ_230921.xls', sheet_name='DealOwnsReport', header=3)
     df = df.loc[df['Тип сделки'] == 'Клиентская'].reset_index(drop=True)
     df['Код инструмента'] = df['Код инструмента'].str.replace('-', '_').str.split('_').str[0]
     # так как сделики в течении дня происходят разными строкам требуется группировка
@@ -21,7 +21,7 @@ def vtb():
     df = roe_table_update(df, 0, 3)  # заполнение курса ЦБ по каждой из операций
     broker = 'VTB'
     full_list_of_securities = df['Код инструмента'].unique().tolist()
-    # full_list_of_securities = ['FTCH']
+    # full_list_of_securities = ['CON@DE']
     main_func(full_list_of_securities, df, broker)
     return
 

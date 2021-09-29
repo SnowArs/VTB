@@ -1,5 +1,7 @@
 import datetime as dt
 import os
+
+import pandas
 import pandas as pd
 
 from VTB_NEW.moex import fill_roe
@@ -14,10 +16,12 @@ def find_latest_file(path):
         latest_file = max(files, key=os.path.getatime)
         return latest_file
 
+
 """"" 
 создание базы данных по курсам ЦБ для определнных валют и на определнную датуза, проверка новых дат,
 заполнение колонок  ROE/RUB_sum
 """""
+
 
 def roe_table_update(df, date_column, currency_column):
     df = pd.concat([df, pd.DataFrame(columns=['ROE_index'])])
@@ -32,14 +36,17 @@ def roe_table_update(df, date_column, currency_column):
             print('ROE по всем датам проставленно')
         else:
             for ind, line in df.loc[df['ROE'].isna()].iterrows():
-                df['ROE'][ind] = fill_roe(line[date_column], line[currency_column], df.iloc[:, date_column].min())
+                if df['Валюта'][ind] == 'RUB':
+                    df['ROE'][ind] = 1
+                else:
+                    df['ROE'][ind] = fill_roe(line[date_column], line[currency_column], df.iloc[:, date_column].min())
                 print(ind)
     else:
         for ind, line in df.iterrows():
             df = pd.concat([df, pd.DataFrame(columns=['ROE'])])
             df['ROE'][line] = fill_roe(line[date_column], line[currency_column], df.iloc[:, date_column].min())
             df_roe = pd.DataFrame(columns=['ROE_index', 'ROE'])
-    df2 = df.loc[(df['ROE'] != 1) & (df.iloc[:, date_column] < dt.datetime.today().strftime('%Y-%m-%d')),
+    df2 = df.loc[(df['ROE'] != 1) & (df.iloc[:, date_column].astype('str') < dt.datetime.today().strftime('%Y-%m-%d')),
                  ['ROE_index', 'ROE']]
     df2 = df2.drop_duplicates('ROE_index', ignore_index=True)
     df_roe = df_roe.append(df2)  # проверить логику появления df_roe
@@ -49,3 +56,22 @@ def roe_table_update(df, date_column, currency_column):
     df['RUB_sum'] = df['Sum'] * df['ROE']
     df = df.astype({'ROE': 'float', 'RUB_sum': 'float'})
     return df
+
+
+def excel_saving(**kwargs):
+    if kwargs['df'].empty & (kwargs['arr'] == []):
+        return
+    else:
+        if kwargs['df'].empty:
+            df_to_save = pd.DataFrame(kwargs['arr'], columns=kwargs['columns'])
+        else:
+            df_to_save = kwargs['df']
+
+        file_closed = True
+        while file_closed:
+            try:
+                df_to_save.to_excel(f"{kwargs['path']}{kwargs['name']}.xlsx", float_format="%.2f", index=False)
+                file_closed = False
+            except PermissionError:
+                input(f"Необходимо закрыть файл {kwargs['path']}{kwargs['name']}.xlsx и нажать ENTER")
+    return df_to_save

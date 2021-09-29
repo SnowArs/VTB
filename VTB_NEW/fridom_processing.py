@@ -8,7 +8,7 @@ warnings.filterwarnings('ignore')
 
 def fridom():
 
-    df = pd.read_excel('BD\\FRIDOM\\FRIDOM.xlsx')
+    df = pd.read_excel('BD\\FRIDOM\\FRIDOM 230921.xlsx')
     df['date'] = pd.to_datetime(df['Расчеты'])
     df['B/S'], df['Символ'], df['Валюта'] = df['Операция'], df['Тикер'], df['валюта']
     df['Символ'] = df['Символ'].str.replace('.', '_').str.split('_').str[0]

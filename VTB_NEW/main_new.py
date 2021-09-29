@@ -1,4 +1,6 @@
 import warnings
+
+from VTB_NEW.modules import excel_saving
 from moex import *
 import class_new
 from func import culc, outstanding_volume_price, rub_securities_processing
@@ -7,28 +9,10 @@ warnings.filterwarnings('ignore')
 
 
 def append_to_total_profit(ticker, total_ndfl, total_combined_profit):
-    total_ndfl += ticker.ndfl_full
-    total_combined_profit += ticker.full_profit
+    if ticker.full_profit != 'N/A':
+        total_ndfl += ticker.ndfl_full
+        total_combined_profit += ticker.full_profit
     return total_ndfl, total_combined_profit
-
-
-def excel_saving(**kwargs):
-    if kwargs['df'].empty & (kwargs['arr'] == []):
-        return
-    else:
-        if kwargs['df'].empty:
-            df_to_save = pd.DataFrame(kwargs['arr'], columns=kwargs['columns'])
-        else:
-            df_to_save = kwargs['df']
-
-        file_closed = True
-        while file_closed:
-            try:
-                df_to_save.to_excel(f"{kwargs['path']}{kwargs['name']}.xls")
-                file_closed = False
-            except PermissionError:
-                input(f"Необходимо закрыть файл {kwargs['path']}{kwargs['name']}.xls и нажать ENTER")
-    return df_to_save
 
 
 """"" 
@@ -60,8 +44,8 @@ def main_func(full_list_of_securities, df, broker):
     mytable_rus.field_names = field_names
     array_with_results = []
     array_with_results_rus = []
-    prof_per_year_dict = {'2020': [], '2021': []}
-    ndfl_per_year_dict = {'2020': [], '2021': []}
+    prof_per_year_dict = {'2018': [], '2019': [], '2020': [], '2021': []}
+    ndfl_per_year_dict = {'2018': [], '2019': [], '2020': [], '2021': []}
 
     """"" 
     2/ по каждой бумаге в портфеле производится подсчет показателей прибыльности
@@ -106,7 +90,7 @@ def main_func(full_list_of_securities, df, broker):
                     input(f'похоже в позиции {ticker.name} пропущены покупки, так как таблица начинается с продаж')
                     continue
             # обработка рублевых бумаг
-            if ticker.currency == 'RUR':
+            if (ticker.currency == 'RUR') | (ticker.currency == 'RUB'):
                 ticker, error_arr = rub_securities_processing(ticker, error_arr)
                 path_to_save = 'calc\\'
                 formula_list = {'df': ticker.df, 'arr': [], 'name': ticker.name, 'path': path_to_save, 'columns': [],
@@ -120,7 +104,7 @@ def main_func(full_list_of_securities, df, broker):
                                     int(ticker.prof_for_sold_securities),
                                     round(ticker.average_buy, 2),
                                     ticker.current_price,
-                                    int(ticker.profit_for_outstanding_volumes),
+                                    ticker.profit_for_outstanding_volumes,
                                     int(ticker.full_profit),
                                     ticker.average_roe_for_outstanding_volumes,
                                     ticker.broker,
@@ -151,10 +135,10 @@ def main_func(full_list_of_securities, df, broker):
                                          ticker.outstanding_volumes,
                                          round(ticker.ndfl_full, 2),
                                          round(ticker.prof_for_sold_securities, 2),
-                                         round(ticker.average_price_usd, 2),
-                                         round(ticker.current_price, 2),
-                                         round(ticker.profit_for_outstanding_volumes , 2),
-                                         round(ticker.full_profit, 2),
+                                         ticker.average_price_usd,
+                                         ticker.current_price,
+                                         ticker.profit_for_outstanding_volumes,
+                                         ticker.full_profit,
                                          ticker.average_roe_for_outstanding_volumes,
                                          ticker.broker,
                                          ticker.currency,
