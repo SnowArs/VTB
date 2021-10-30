@@ -1,6 +1,6 @@
 import pandas as pd
 import warnings
-from main_new import main_func
+from main import main_func
 from VTB_NEW.modules import roe_table_update
 
 warnings.filterwarnings('ignore')

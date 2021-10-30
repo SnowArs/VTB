@@ -1,7 +1,7 @@
 import csv
 
 from VTB_NEW.modules import roe_table_update
-from main_new import *
+from main import *
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -9,7 +9,7 @@ warnings.filterwarnings('ignore')
 
 def ib():
 
-    file = r'BD\IB\U3557843_20210101_20210923.csv'
+    file = r'BD\IB\U3557843_20210104_20211028.csv'
     # path = r'BD\IB'
     # file = modules.find_latest_file(path)
     with open(file, encoding='utf-8', newline='', errors='ignore') as File:
@@ -35,7 +35,7 @@ def ib():
                     except ValueError:
                         print(f'ValueError {row}')
                         continue
-    check_list_before_proseccing = df_check['Символ'].unique().tolist()
+    check_list_before_processing = df_check['Символ'].unique().tolist()
     df2021['date'] = df2021['Дата/Время'].str.split(',').str.get(0)
     df2021['date'] = pd.to_datetime(df2021['date'])
     df2021['B/S'] = df2021['Код'].str.split(';').str.get(0)
@@ -76,7 +76,7 @@ def ib():
     # проверка, что с остатками правильные бумаги
     df_results = df_results.loc[df_results['Остаток'] > 0]
     check_after_results = df_results['Тикер'].unique().tolist()
-    missed_tickers = set(check_list_before_proseccing) ^ set(check_after_results)
+    missed_tickers = set(check_list_before_processing) ^ set(check_after_results)
     print(f'различия по бумагам с остатками в информации от брокера и после обработки : {missed_tickers}')
     return
 

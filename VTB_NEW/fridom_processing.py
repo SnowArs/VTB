@@ -1,6 +1,6 @@
 import pandas as pd
 import warnings
-from main_new import main_func
+from main import main_func
 from VTB_NEW.modules import roe_table_update
 
 warnings.filterwarnings('ignore')
@@ -8,7 +8,7 @@ warnings.filterwarnings('ignore')
 
 def fridom():
 
-    df = pd.read_excel('BD\\FRIDOM\\FRIDOM 230921.xlsx')
+    df = pd.read_excel('BD\\FRIDOM\\FRIDOM 291021.xlsx')
     df['date'] = pd.to_datetime(df['Расчеты'])
     df['B/S'], df['Символ'], df['Валюта'] = df['Операция'], df['Тикер'], df['валюта']
     df['Символ'] = df['Символ'].str.replace('.', '_').str.split('_').str[0]
@@ -28,6 +28,7 @@ def fridom():
 
     df.reset_index(drop=True, inplace=True)
     df = df[['date', 'Символ', 'B/S', 'Валюта', 'Price', 'Volume', 'Commission', 'Sum', 'ROE_index', 'ROE', 'RUB_sum']]
+    df.sort_values(by=['Символ', 'date'], inplace=True)
     main_func(full_list_of_securities, df, broker)
 
 

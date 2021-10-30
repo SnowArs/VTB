@@ -1,13 +1,13 @@
 import pandas as pd
 import warnings
-from main_new import main_func
+from main import main_func
 from VTB_NEW.modules import roe_table_update
 
 warnings.filterwarnings('ignore')
 
 
 def vtb():
-    df = pd.read_excel('BD\\VTB\\сделки_ВТБ_230921.xls', sheet_name='DealOwnsReport', header=3)
+    df = pd.read_excel('BD\\VTB\\сделки_ВТБ_291021.xls', sheet_name='DealOwnsReport', header=3)
     df = df.loc[df['Тип сделки'] == 'Клиентская'].reset_index(drop=True)
     df['Код инструмента'] = df['Код инструмента'].str.replace('-', '_').str.split('_').str[0]
     # так как сделики в течении дня происходят разными строкам требуется группировка

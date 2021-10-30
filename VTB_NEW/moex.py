@@ -48,12 +48,3 @@ def fill_roe(roe_date, currency, date_min):
     # print(roe)
     return roe
 
-
-# НДФЛ
-def ndfl_func(profit):
-    if profit > 0:
-        ndfl = profit * 0.15
-    else:
-        ndfl = 0
-
-    return ndfl

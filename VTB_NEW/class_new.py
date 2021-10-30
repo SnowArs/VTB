@@ -7,6 +7,8 @@ from tradingview_ta import TA_Handler, Interval, Exchange
 from settings import settings
 import BD
 import numpy as np
+
+
 # from modules import excel_saving
 
 
@@ -93,8 +95,6 @@ class Ticker(Calculations):
         self.settings = settings(broker)
         self.df = security_df
         self.raw_name = security_df.iloc[:, self.settings['name']][0]
-        self.index_sell_deals = \
-            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code']].index.array
         self.currency = security_df['Валюта'][0]
         self.broker = broker
         self.volume_mult = 1
@@ -105,7 +105,9 @@ class Ticker(Calculations):
         self.market = ''
         self.commission = self.commission()
         self.average_price_usd = 'N/A'
-        self.name = self.stock_name()
+        self.name = self.security_name()
+        self.index_sell_deals = \
+            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code']].index.array
         self.index_buy_deals = \
             security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['buy_code']].index.array
         self.buy_volume_array = np.array(
@@ -120,14 +122,13 @@ class Ticker(Calculations):
         self.average_roe_for_outstanding_volumes = 0
 
         self.filled_row = 0
-        self.ndfl = 0
-        self.ndfl_full = 0
         self.full_profit = 0
+        self.prof_for_sold_securities_rur = 0
         self.prof_for_sold_securities = 0
         self.profit_for_outstanding_volumes = 0
         # подсчет количества проданных и купленных бумаг
         self.total_buy = \
-            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['buy_code'], 'Volume'].sum()\
+            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['buy_code'], 'Volume'].sum() \
             * self.volume_mult
         self.total_sell = \
             security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code'], 'Volume'].sum() \
@@ -138,13 +139,14 @@ class Ticker(Calculations):
             security_df.loc[
                 security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code'], 'RUB_sum'].sum()
         self.outstanding_volumes = self.total_buy - self.total_sell
-        self.current_price = self.get_current_price()#self.board, self.market, self.bonds_mult)
+        self.current_price = self.get_current_price()  # self.board, self.market, self.bonds_mult)
 
-    def stock_name(self):
+    def security_name(self):
+        self.type = 'Иностранные акции'
+        stock_name = self.raw_name
         if self.currency == 'USD':
-            self.type = 'Иностранные акции'
             if self.broker == 'IB':
-                if len(self.raw_name) > 10:
+                if len(self.raw_name) > 10:  # определение облигаций и опционов
                     options = ('_C', '_P')
                     if self.raw_name.endswith(options):
                         self.volume_mult = 100
@@ -153,32 +155,22 @@ class Ticker(Calculations):
                         self.volume_mult = 0.001
                         self.bonds_mult = 10
                         self.type = 'Еврооблигация'
-                    stock_name = self.raw_name
+                # обработка привелигерованных акций
                 elif (self.raw_name.endswith(' PR', 4, 7)) | (self.raw_name.endswith(' PR', 3, 6)):
                     stock_name = self.raw_name.replace(' PR', '-P')
-                    self.type = 'Иностранные акции'
-                else:
-                    stock_name = self.raw_name
-                    self.type = 'Иностранные акции'
             elif self.broker == 'SBER':
                 if len(self.raw_name) > 10:
                     self.bonds_mult = 10
                     self.type = 'Еврооблигация'
-                else:
-                    self.type = 'Иностранные акции'
-                stock_name = self.raw_name
-            else:
-                stock_name = self.raw_name
         elif self.currency == 'GBP':
-            self.bonds_mult = 0.010 # Пока только для FRES
+            self.bonds_mult = 0.010  # Пока только для FRES
             self.type = 'Иностранные акции в фунтах'
             stock_name = self.raw_name + '.L'
         elif self.currency == 'HKD':
-            stock_name = self.raw_name
+            # stock_name = self.raw_name
             self.type = 'Китайские акции'
             self.ratio = 10
         elif self.currency == 'EUR':
-            stock_name = self.raw_name
             if len(stock_name) > 7:
                 self.type = 'Иностранные облигации в евро'
                 self.bonds_mult = 10
@@ -189,7 +181,6 @@ class Ticker(Calculations):
             elif self.broker == 'IB':
                 stock_name = self.raw_name[:-1] + '.DE'
         elif (self.currency == 'RUR') | (self.currency == 'RUB'):
-            stock_name = self.raw_name
             if len(stock_name) > 5:
                 self.board = 'TQCB'
                 self.market = 'bonds'
@@ -222,8 +213,12 @@ class Ticker(Calculations):
             exc = data['Close'][0]
         return exc
 
-
     def commission(self):
         if self.broker == 'VTB':
             commission = 0.001
+        elif self.broker == 'FRIDOM':
+            commission = self.df['Commission'].sum()
+        elif self.broker == 'IB':
+            commission = 0.001
+
         return commission
