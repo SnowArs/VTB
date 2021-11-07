@@ -30,13 +30,14 @@ def roe_table_update(df, date_column, currency_column):
 
     if os.path.exists('BD\\roe_table.csv'):
         df_roe = pd.read_csv('BD\\roe_table.csv', usecols=['ROE_index', 'ROE'])
+        #п
         df = df.merge(df_roe, how='left', left_on='ROE_index', right_on='ROE_index')
-        df.loc[df.iloc[:, currency_column] == 'RUR', 'ROE'] = 1
+        df.loc[df.iloc[:, currency_column].str.contains('RUR'or'RUB'), 'ROE'] = 1
         if df.loc[df['ROE'].isna()].empty:
             print('ROE по всем датам проставленно')
         else:
             for ind, line in df.loc[df['ROE'].isna()].iterrows():
-                if df['Валюта'][ind] == 'RUB':
+                if ('RUR' or 'RUB') in df['Валюта'][ind]:
                     df['ROE'][ind] = 1
                 else:
                     df['ROE'][ind] = fill_roe(line[date_column], line[currency_column], df.iloc[:, date_column].min())

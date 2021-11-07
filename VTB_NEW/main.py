@@ -87,65 +87,65 @@ def main_func(full_list_of_securities, df, broker):
                     input(f'похоже в позиции {ticker.name} пропущены покупки, так как таблица начинается с продаж')
                     continue
             # обработка рублевых бумаг
-            if (ticker.currency == 'RUR') | (ticker.currency == 'RUB'):
-                ticker, error_arr = rub_securities_processing(ticker, error_arr)
-                path_to_save = 'calc\\'
-                formula_list = {'df': ticker.df, 'arr': [], 'name': ticker.name, 'path': path_to_save, 'columns': [],
-                                'columns_to_save': 10}
-                excel_saving(**formula_list)
-                RUS_TABLE_COLUMN = [ticker.name,
-                                    ticker.total_buy,
-                                    ticker.total_sell,
-                                    ticker.outstanding_volumes,
-                                    round(ticker.prof_for_sold_securities_rur, 2),
-                                    int(ticker.prof_for_sold_securities),
-                                    round(ticker.average_buy, 2),#diff
-                                    ticker.current_price,
-                                    ticker.profit_for_outstanding_volumes,
-                                    int(ticker.full_profit),
-                                    ticker.average_roe_for_outstanding_volumes,
-                                    ticker.broker,
-                                    ticker.currency,
-                                    ticker.full_name,
-                                    ticker.type]
-
-                mytable_rus.add_row(RUS_TABLE_COLUMN)
-                total_combined_profit_rus = \
-                    append_to_total_profit(ticker, total_combined_profit_rus)
-                array_with_results_rus.append(RUS_TABLE_COLUMN)
+            # if (ticker.currency == 'RUR') | (ticker.currency == 'RUB'):
+            #     ticker, error_arr = rub_securities_processing(ticker, error_arr)
+            #     path_to_save = 'calc\\'
+            #     formula_list = {'df': ticker.df, 'arr': [], 'name': ticker.name, 'path': path_to_save, 'columns': [],
+            #                     'columns_to_save': 10}
+            #     excel_saving(**formula_list)
+            #     RUS_TABLE_COLUMN = [ticker.name,
+            #                         ticker.total_buy,
+            #                         ticker.total_sell,
+            #                         ticker.outstanding_volumes,
+            #                         round(ticker.prof_for_sold_securities_rur, 2),
+            #                         int(ticker.prof_for_sold_securities),
+            #                         round(ticker.average_buy, 2),#diff
+            #                         ticker.current_price,
+            #                         ticker.profit_for_outstanding_volumes,
+            #                         int(ticker.full_profit),
+            #                         ticker.average_roe_for_outstanding_volumes,
+            #                         ticker.broker,
+            #                         ticker.currency,
+            #                         ticker.full_name,
+            #                         ticker.type]
+            #
+            #     mytable_rus.add_row(RUS_TABLE_COLUMN)
+            #     total_combined_profit_rus = \
+            #         append_to_total_profit(ticker, total_combined_profit_rus)
+            #     array_with_results_rus.append(RUS_TABLE_COLUMN)
 
             # блок вычисления прибыли и убытков по бумаге в USD/ EUR /HKD
-            else:
+            # else:
                 # вычесление прибыли и убытков
-                ticker, error_arr, prof_per_year_dict, prof_rur_per_year_dict = \
-                    culc(ticker, error_arr, prof_per_year_dict, prof_rur_per_year_dict)
-                # вычисление средней цены  оставшихся бумаг в рублях и валюте
-                ticker, error_arr = outstanding_volume_price(ticker, error_arr)
-                # сохранение для более простой проверки правильности расчетов
-                path_to_save = 'calc\\'
-                formula_list = {'df': ticker.df, 'arr': [], 'name': ticker.name, 'path': path_to_save, 'columns': []}
-                excel_saving(**formula_list)
-                # заполнение таблицы
-                NON_RUS_TABLE_COLUMNS = [ticker.name,
-                                         ticker.total_buy,
-                                         ticker.total_sell,
-                                         ticker.outstanding_volumes,
-                                         round(ticker.prof_for_sold_securities_rur, 2),
-                                         round(ticker.prof_for_sold_securities, 2),
-                                         ticker.average_price_usd,
-                                         ticker.current_price,
-                                         ticker.profit_for_outstanding_volumes,
-                                         ticker.full_profit,
-                                         ticker.average_roe_for_outstanding_volumes,
-                                         ticker.broker,
-                                         ticker.currency,
-                                         ticker.full_name,
-                                         ticker.type]
+            ticker, error_arr, prof_per_year_dict, prof_rur_per_year_dict = \
+                culc(ticker, error_arr, prof_per_year_dict, prof_rur_per_year_dict)
+            # вычисление средней цены  оставшихся бумаг в рублях и валюте
+            ticker, error_arr = outstanding_volume_price(ticker, error_arr)
+            # сохранение для более простой проверки правильности расчетов
+            path_to_save = 'calc\\'
+            formula_list = {'df': ticker.df, 'arr': [], 'name': ticker.name, 'path': path_to_save, 'columns': []}
+            excel_saving(**formula_list)
+            # заполнение таблицы
+            NON_RUS_TABLE_COLUMNS = [ticker.name,
+                                     ticker.total_buy,
+                                     ticker.total_sell,
+                                     ticker.outstanding_volumes,
+                                     round(ticker.prof_for_sold_securities_rur, 2),
+                                     round(ticker.prof_for_sold_securities, 2),
+                                     ticker.average_price_usd,
+                                     ticker.current_price,
+                                     ticker.profit_for_outstanding_volumes,
+                                     ticker.full_profit,
+                                     ticker.average_roe_for_outstanding_volumes,
+                                     ticker.broker,
+                                     ticker.currency,
+                                     ticker.full_name,
+                                     ticker.type]
 
-                mytable.add_row(NON_RUS_TABLE_COLUMNS)
-                array_with_results.append(NON_RUS_TABLE_COLUMNS)
-                total_combined_profit_non_rus = \
-                    append_to_total_profit(ticker, total_combined_profit_non_rus)
+            mytable.add_row(NON_RUS_TABLE_COLUMNS)
+            array_with_results.append(NON_RUS_TABLE_COLUMNS)
+            total_combined_profit_non_rus = \
+                append_to_total_profit(ticker, total_combined_profit_non_rus)
     # сохранение результатов
     path_to_save = 'BD\\results_rus_'
     formula_list = {'df': pd.DataFrame(), 'arr': array_with_results_rus, 'name': broker, 'path': path_to_save,

@@ -184,7 +184,7 @@ class Ticker(Calculations):
             if len(stock_name) > 5:
                 self.board = 'TQCB'
                 self.market = 'bonds'
-                self.bonds_mult = 10
+                self.bonds_mult = 1
                 self.type = 'Российские облигации'
             else:
                 self.board = 'TQBR'
