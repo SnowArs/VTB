@@ -10,14 +10,17 @@ def fill_roe(roe_date, currency, date_min):
 
     def roe_calc(date=roe_date):
         date_max = dt.datetime.now()
-        roe_date_mod = pd.to_datetime(date, format="%Y-%m-%d", errors='coerce')
+        roe_date_mod = pd.to_datetime(date, format='%Y-%m-%d', errors='coerce')
 
-        if currency == "USD":
+        if currency == 'USD':
             id_code = 'R01235'
             roe_ = 1
-        elif currency == "HKD":
+        elif currency == 'HKD':
             id_code = 'R01200'
             roe_ = 10
+        elif currency == 'GBP':
+            id_code = 'R01035'
+            roe_ = 1
         else:
             id_code = 'R01239'
             roe_ = 1
@@ -26,7 +29,7 @@ def fill_roe(roe_date, currency, date_min):
 
         return dynamic_rates.get_by_date(roe_date_mod).value / roe_
 
-    if currency == "RUR":
+    if (currency == 'RUR') | (currency == 'RUB'):
         roe = 1
     else:
         try:
@@ -45,12 +48,3 @@ def fill_roe(roe_date, currency, date_min):
     # print(roe)
     return roe
 
-
-# НДФЛ
-def ndfl_func(profit):
-    if profit > 0:
-        ndfl = profit * 0.15
-    else:
-        ndfl = 0
-
-    return ndfl
