@@ -15,9 +15,10 @@ import numpy as np
 class Calculations:
 
     def get_current_price(self, board='', market=''):
+        self.full_name = ''
         def hkd(name_y_n):
             security_data = TA_Handler(
-                symbol=self.name,
+                symbol=self.ticker,
                 screener="hongkong",
                 exchange="HKEX",
                 interval=Interval.INTERVAL_1_DAY
@@ -28,11 +29,11 @@ class Calculations:
                 pass
             return self
 
-        def rur(name_y_n):
+        def rub(name_y_n):
             with requests.Session() as session:
-                data = apimoex.get_board_history(session, self.name, market=self.market, board=self.board)
+                data = apimoex.get_board_history(session, self.ticker, market=self.market, board=self.board)
                 if not data:
-                    print(f'no info for {self.name}')
+                    print(f'no info for {self.ticker}')
                     self.current_price = 'N/A'
                     return self
                 else:
@@ -44,16 +45,16 @@ class Calculations:
 
             if data:
                 if name_y_n != 'Y':
-                    data1 = apimoex.find_security_description(session, self.name)
+                    data1 = apimoex.find_security_description(session, self.ticker)
                     self.full_name = data1[2]['value']
 
             return self
 
         def usd_eur_exchange(name_y_n):
-            security_name = yf.Ticker(self.name)
+            security_name = yf.Ticker(self.ticker)
             data = security_name.history(period='1d')
             if data.empty:
-                print(f'no info for {self.name}')
+                print(f'no info for {self.ticker}')
                 self.current_price = 'N/A'
 
                 # return self
@@ -76,22 +77,22 @@ class Calculations:
             self.current_price = 0
             return self.current_price
 
-        elif self.name in base_with_company_names['Тикер'].astype('str').array:
-            self.full_name = base_with_company_names.loc[base_with_company_names['Тикер'] == self.name,
+        elif self.ticker in base_with_company_names['Тикер'].astype('str').array:
+            self.full_name = base_with_company_names.loc[base_with_company_names['Тикер'] == self.ticker,
                                                          'Название компании'].array[0]
             name_y_n = 'Y'
 
         if self.currency == 'HKD':
             self = hkd(name_y_n)
         elif (self.currency == 'RUR') | (self.currency == 'RUB'):
-            self = rur(name_y_n)
+            self = rub(name_y_n)
         else:
             self = usd_eur_exchange(name_y_n)
         return self.current_price
 
 
 class Ticker(Calculations):
-    def __init__(self, security_df, broker):
+    def __init__(self, security_df, broker, security_name_and_price, df_with_currencies_exchange):
         self.settings = settings(broker)
         self.df = security_df
         self.raw_name = security_df.iloc[:, self.settings['name']][0]
@@ -99,13 +100,13 @@ class Ticker(Calculations):
         self.broker = broker
         self.volume_mult = 1
         self.bonds_mult = 1
-        self.full_name = ''
         self.type = ''
         self.board = ''
         self.market = ''
+        self.ratio = 1
         self.commission = self.commission()
         self.average_price_usd = 'N/A'
-        self.name = self.security_name()
+        self.ticker = self.ticker_name()
         self.index_sell_deals = \
             security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code']].index.array
         self.index_buy_deals = \
@@ -117,13 +118,11 @@ class Ticker(Calculations):
             security_df.loc[
                 security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code'], 'Volume'].array) \
                                  * self.volume_mult
-
-        self.exchange_to_usd = self.exchange()
+        self.exchange_to_usd = self.exchange(df_with_currencies_exchange)
         self.average_roe_for_outstanding_volumes = 0
-
         self.filled_row = 0
         self.full_profit = 0
-        self.prof_for_sold_securities_rur = 0
+        self.prof_for_sold_securities_rub = 0
         self.prof_for_sold_securities = 0
         self.profit_for_outstanding_volumes = 0
         # подсчет количества проданных и купленных бумаг
@@ -139,9 +138,19 @@ class Ticker(Calculations):
             security_df.loc[
                 security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code'], 'RUB_sum'].sum()
         self.outstanding_volumes = self.total_buy - self.total_sell
-        self.current_price = self.get_current_price()  # self.board, self.market, self.bonds_mult)
+        self.full_name, self.current_price = self.security_name(security_name_and_price)
+        # self.current_price = self.get_current_price()  # self.board, self.market, self.bonds_mult)
 
-    def security_name(self):
+    def security_name(self, security_name_and_price):
+        if security_name_and_price[1] == '':
+            self.current_price = self.get_current_price()
+            self.full_name = self.get_current_price()
+        else:
+            self.full_name = security_name_and_price[1]
+            self.current_price = security_name_and_price[2]
+        return self.full_name, self.current_price
+
+    def ticker_name(self):
         self.type = 'Иностранные акции'
         stock_name = self.raw_name
         if self.currency == 'USD':
@@ -194,24 +203,25 @@ class Ticker(Calculations):
 
         return stock_name
 
-    def exchange(self):
+    def exchange(self, df_with_currencies_exchange):
         if self.currency == 'USD':
-            exc = 1
-            return exc
+            exchange = 1
+            return exchange
         if (self.currency == 'RUR') | (self.currency == 'RUB'):
-            symbol = f'RUBUSD=X'
+            exchange = df_with_currencies_exchange.loc[df_with_currencies_exchange.currency == 'RUBUSD=X', 'ROE'].values
         else:
-            symbol = f'{self.currency}USD=X'
-        security_name = yf.Ticker(symbol)
-        data = security_name.history(period='1d')
-        if data.empty:
-            print(f'no info for {symbol}')
-            exc = -100
-        elif math.isnan(data['Close'][0]):
-            exc = data['Close'][1]
-        else:
-            exc = data['Close'][0]
-        return exc
+            exchange = df_with_currencies_exchange.loc[df_with_currencies_exchange.currency ==
+                                                       f'{self.currency}USD=X', 'ROE'].values
+        # security_name = yf.Ticker(symbol)
+        # data = security_name.history(period='1d')
+        # if data.empty:
+        #     print(f'no info for {symbol}')
+        #     exchange = -100
+        # elif math.isnan(data['Close'][0]):
+        #     exchange = data['Close'][1]
+        # else:
+        #     exchange = data['Close'][0]
+        return exchange[0]
 
     def commission(self):
         if self.broker == 'VTB':

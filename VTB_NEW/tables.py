@@ -9,7 +9,7 @@ RUS_TABLE_COLUMN = ['ticker.name',
                     'int(profit_for_outstanding_volumes_rus)',
                     'int(total_profit_rus)']
 
-NON_RUS_TABLE_COLUMNS =[ticker.name,
+NON_RUS_TABLE_COLUMNS =[ticker.ticker,
                         ticker.total_buy,
                         ticker.total_sell,
                         ticker.outstanding_volumes,

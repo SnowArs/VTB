@@ -10,7 +10,7 @@ def load_names():
 
 def update_bd_with_names(ticker):
     df = pd.read_excel('BD\\Company_names.xlsx')
-    row = {'Тикер': ticker.name, 'Название компании': ticker.full_name, 'Брокер': ticker.broker,
+    row = {'Тикер': ticker.ticker, 'Название компании': ticker.full_name, 'Брокер': ticker.broker,
            'Валюта': ticker.currency, 'Инструмент': ticker.type}
     df.loc[len(df)] = row
     path_to_save = 'BD\\'
