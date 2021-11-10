@@ -16,47 +16,67 @@ class Calculations:
 
     def get_current_price(self, board='', market=''):
         self.full_name = ''
-        def hkd(name_y_n):
-            security_data = TA_Handler(
-                symbol=self.ticker,
-                screener="hongkong",
-                exchange="HKEX",
-                interval=Interval.INTERVAL_1_DAY
-            )
-            # print(self.name, security_data.get_analysis().indicators['close'])
-            self.current_price = round(security_data.get_analysis().indicators['close'], 2)
+        self.current_price = 0
+        # загрузка базы с именами, чтобы ускорить процесс
+        base_with_company_names = BD.load_names()
+        name_y_n = 'N'
+        if self.outstanding_volumes == 0:
+            self.current_price = 0
+            return self.current_price
+
+        elif self.ticker in base_with_company_names['Тикер'].astype('str').array:
+            self.full_name = base_with_company_names.loc[base_with_company_names['Тикер'] == self.ticker,
+                                                         'Название компании'].array[0]
+            name_y_n = 'Y'
+        if self.currency == 'HKD':
+            self = self.hkd(name_y_n)
+        elif (self.currency == 'RUR') | (self.currency == 'RUB'):
+            self = self.rub(name_y_n)
+        else:
+            self = self.usd_eur_exchange(name_y_n)
+
+
+    def hkd(self, name_y_n):
+        security_data = TA_Handler(
+            symbol=self.ticker,
+            screener="hongkong",
+            exchange="HKEX",
+            interval=Interval.INTERVAL_1_DAY
+        )
+        # print(self.name, security_data.get_analysis().indicators['close'])
+        self.current_price = round(security_data.get_analysis().indicators['close'], 2)
+        if name_y_n != 'Y':
+            pass
+        return self
+
+    def rub(self, name_y_n):
+        with requests.Session() as session:
+            data = apimoex.get_board_history(session, self.ticker, market=self.market, board=self.board)
+            if not data:
+                print(f'no info for {self.ticker}')
+                self.current_price = 'N/A'
+                return self
+            else:
+                dataframe = pd.DataFrame(data)
+                current_price = dataframe.CLOSE.tail(1).array[0]
+                if math.isnan(current_price):
+                    self.current_price = 'closed'
+        self.current_price = round(current_price * self.bonds_mult, 2)
+
+        if data:
             if name_y_n != 'Y':
-                pass
-            return self
+                data1 = apimoex.find_security_description(session, self.ticker)
+                self.full_name = data1[2]['value']
 
-        def rub(name_y_n):
-            with requests.Session() as session:
-                data = apimoex.get_board_history(session, self.ticker, market=self.market, board=self.board)
-                if not data:
-                    print(f'no info for {self.ticker}')
-                    self.current_price = 'N/A'
-                    return self
-                else:
-                    dataframe = pd.DataFrame(data)
-                    current_price = dataframe.CLOSE.tail(1).array[0]
-                    if math.isnan(current_price):
-                        self.current_price = 'closed'
-            self.current_price = round(current_price * self.bonds_mult, 2)
+        return self
 
-            if data:
-                if name_y_n != 'Y':
-                    data1 = apimoex.find_security_description(session, self.ticker)
-                    self.full_name = data1[2]['value']
-
-            return self
-
-        def usd_eur_exchange(name_y_n):
-            security_name = yf.Ticker(self.ticker)
+    def usd_eur_exchange(self, name_y_n):
+        security_name = yf.Ticker(self.ticker)
+        try:
             data = security_name.history(period='1d')
             if data.empty:
                 print(f'no info for {self.ticker}')
                 self.current_price = 'N/A'
-
                 # return self
             elif math.isnan(data['Close'][0]):
                 self.current_price = round(data['Close'][1], 2) * self.bonds_mult
@@ -68,7 +88,11 @@ class Calculations:
             elif (name_y_n != 'Y') & (self.full_name != ''):
                 BD.update_bd_with_names(self)
 
+        except:
+            print('JSONDecodeError')
             return self
+
+
 
         # загрузка базы с именами, чтобы ускорить процесс
         base_with_company_names = BD.load_names()
@@ -82,13 +106,8 @@ class Calculations:
                                                          'Название компании'].array[0]
             name_y_n = 'Y'
 
-        if self.currency == 'HKD':
-            self = hkd(name_y_n)
-        elif (self.currency == 'RUR') | (self.currency == 'RUB'):
-            self = rub(name_y_n)
-        else:
-            self = usd_eur_exchange(name_y_n)
-        return self.current_price
+
+        # return self.current_price
 
 
 class Ticker(Calculations):
@@ -160,6 +179,7 @@ class Ticker(Calculations):
                     if self.raw_name.endswith(options):
                         self.volume_mult = 100
                         self.type = 'Опцион'
+                        self.full_name = 'Call/Put'
                     else:
                         self.volume_mult = 0.001
                         self.bonds_mult = 10
@@ -212,15 +232,7 @@ class Ticker(Calculations):
         else:
             exchange = df_with_currencies_exchange.loc[df_with_currencies_exchange.currency ==
                                                        f'{self.currency}USD=X', 'ROE'].values
-        # security_name = yf.Ticker(symbol)
-        # data = security_name.history(period='1d')
-        # if data.empty:
-        #     print(f'no info for {symbol}')
-        #     exchange = -100
-        # elif math.isnan(data['Close'][0]):
-        #     exchange = data['Close'][1]
-        # else:
-        #     exchange = data['Close'][0]
+
         return exchange[0]
 
     def commission(self):
@@ -229,6 +241,8 @@ class Ticker(Calculations):
         elif self.broker == 'FRIDOM':
             commission = self.df['Commission'].sum()
         elif self.broker == 'IB':
+            commission = 0.001
+        elif self.broker == 'SBER':
             commission = 0.001
 
         return commission

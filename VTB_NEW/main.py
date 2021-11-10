@@ -22,7 +22,9 @@ def append_to_total_profit(ticker, total_combined_profit):
 """""
 
 
-def main_func(full_list_of_securities, df, broker):
+def main_func(df, broker, exception_arr=[]):
+    full_list_of_securities_rub = set(df.loc[df.currency == ('RUB' or 'RUR')].ticker)
+    full_list_of_securities = set(df['ticker']) ^ full_list_of_securities_rub
     full_list_of_securities.sort()
     list_with_names_and_prices = asynco_new.main(full_list_of_securities)
     currencies_exchange = asynco_new.main(CURRENCIES)
@@ -65,6 +67,15 @@ def main_func(full_list_of_securities, df, broker):
             # указание на ошибку если остаток акций отрицательный, скорее всего из-за сплита
             if (ticker.outstanding_volumes < 0) or (ticker.index_buy_deals.size == 0):
                 print(f'похоже в позиции {ticker.ticker} проблемы с вычислениями, так как остаток отрицательный')
+                error_arr.append(security)
+                continue
+            # ошибка пропущенных покупок, либо шорт
+            elif (ticker.index_sell_deals.size > 0) and (ticker.index_buy_deals.size > 0):
+                if ticker.index_sell_deals[0] < ticker.index_buy_deals[0]:
+                    input(f'похоже в позиции {ticker.ticker} пропущены покупки, так как таблица начинается с продаж')
+                    error_arr.append(security)
+                    continue
+            elif ticker.sale_volume_array.size != 0:
                 start = True
                 i = 1
                 while start:
@@ -84,12 +95,6 @@ def main_func(full_list_of_securities, df, broker):
                             int(ticker.df.iat[ticker.index_sell_deals[-1], 5] + ticker.outstanding_volumes)
                         ticker.outstanding_volumes = 0
                         start = False
-                error_arr.append(ticker.ticker)
-            # ошибка пропущенных покупок, либо шорт
-            elif (ticker.index_sell_deals.size > 0) and (ticker.index_buy_deals.size > 0):
-                if ticker.index_sell_deals[0] < ticker.index_buy_deals[0]:
-                    input(f'похоже в позиции {ticker.ticker} пропущены покупки, так как таблица начинается с продаж')
-                    continue
 
                 # вычесление прибыли и убытков
             ticker, error_arr, prof_per_year_dict, prof_rub_per_year_dict = \

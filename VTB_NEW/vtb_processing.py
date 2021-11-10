@@ -20,6 +20,7 @@ def vtb():
     df.reset_index(drop=False, inplace=True)
     df = roe_table_update(df, 0, 3)  # заполнение курса ЦБ по каждой из операций
     broker = 'VTB'
+
     full_list_of_securities = df['Код инструмента'].unique().tolist()
     # full_list_of_securities = ['CHMF']
     main_func(full_list_of_securities, df, broker)

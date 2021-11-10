@@ -27,7 +27,11 @@ def fridom():
     broker = 'FRIDOM'
 
     df.reset_index(drop=True, inplace=True)
-    df = df[['date', 'Символ', 'B/S', 'Валюта', 'Price', 'Volume', 'Commission', 'Sum', 'ROE_index', 'ROE', 'RUB_sum']]
+    df.rename(columns={'Символ': 'ticker', 'B/S': 'buy_sell', 'Валюта': 'currency'}, inplace=True)
+    df['NKD'] = ''
+    df = df[['date', 'ticker', 'buy_sell', 'currency', 'Price', 'Volume',
+             'Commission', 'Sum', 'NKD', 'ROE_index', 'ROE', 'RUB_sum']]
+    # df = df[['date', 'Символ', 'B/S', 'Валюта', 'Price', 'Volume', 'Commission', 'Sum', 'ROE_index', 'ROE', 'RUB_sum']]
     df.sort_values(by=['Символ', 'date'], inplace=True)
     main_func(full_list_of_securities, df, broker)
 

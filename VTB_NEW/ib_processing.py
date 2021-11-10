@@ -3,7 +3,7 @@ import csv
 from VTB_NEW.modules import roe_table_update
 from main import *
 import warnings
-
+import settings
 warnings.filterwarnings('ignore')
 
 
@@ -71,6 +71,11 @@ def ib():
     # full_list_of_securities = ['MAC']
     # exception_arr = []
     full_list_of_securities = list(set(full_list_of_securities) ^ set(exception_arr))
+    df.rename(columns={'Дата вал.': 'date', 'Символ': 'ticker', 'B/S': 'buy_sell',
+                       'Валюта': 'currency'}, inplace=True)
+    df['NKD'] = ''
+    df = df[['date', 'ticker', 'buy_sell', 'currency', 'Price', 'Volume',
+            'Commission', 'Sum', 'NKD', 'ROE_index', 'ROE', 'RUB_sum']]
     df_results = main_func(full_list_of_securities, df, broker)
 
     # проверка, что с остатками правильные бумаги
