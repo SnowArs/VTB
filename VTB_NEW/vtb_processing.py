@@ -12,15 +12,17 @@ def vtb():
     df['Код инструмента'] = df['Код инструмента'].str.replace('-', '_').str.split('_').str[0]
     # так как сделики в течении дня происходят разными строкам требуется группировка
     df = df.groupby(['Дата вал.', 'Код инструмента', 'B/S', 'Валюта']).agg(
-        Price=pd.NamedAgg(column='Цена', aggfunc='mean'),
-        Volume=pd.NamedAgg(column='Кол-во', aggfunc='sum'),
-        NKD=pd.NamedAgg(column='НКД', aggfunc='sum'),
-        Sum=pd.NamedAgg(column='Объем', aggfunc='sum')
+        price=pd.NamedAgg(column='Цена', aggfunc='mean'),
+        volume=pd.NamedAgg(column='Кол-во', aggfunc='sum'),
+        nkd=pd.NamedAgg(column='НКД', aggfunc='sum'),
+        sum=pd.NamedAgg(column='Объем', aggfunc='sum')
     )
     df.reset_index(drop=False, inplace=True)
     df = roe_table_update(df, 0, 3)  # заполнение курса ЦБ по каждой из операций
     broker = 'VTB'
-
+    df[['sec_type']] = ''
+    df = df[['date', 'ticker', 'buy_sell', 'currency', 'price', 'volume',
+             'commission', 'sum', 'nkd', 'sec_type', 'ROE_index', 'ROE', 'RUB_sum']]
     full_list_of_securities = df['Код инструмента'].unique().tolist()
     # full_list_of_securities = ['CHMF']
     main_func(full_list_of_securities, df, broker)

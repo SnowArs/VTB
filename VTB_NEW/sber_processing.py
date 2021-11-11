@@ -15,20 +15,21 @@ def sber():
     df['Комиссия'] = df['Комиссия торговой системы'] + df['Комиссия банка']
     df['Дата расчётов'] = df['Дата расчётов'].dt.date
     # так как сделики в течении дня происходят разными строкам требуется группировка
-    df = df.groupby(['Дата расчётов', 'Код финансового инструмента', 'Операция', 'Валюта']).agg(
-        Price=pd.NamedAgg(column='Цена', aggfunc='mean'),
-        Volume=pd.NamedAgg(column='Количество', aggfunc='sum'),
-        NKD=pd.NamedAgg(column='НКД', aggfunc='sum'),
-        Sum=pd.NamedAgg(column='Объём сделки', aggfunc='sum'),
-        Commission=pd.NamedAgg(column='Комиссия', aggfunc='sum')
+    df = df.groupby(['Дата расчётов', 'Код финансового инструмента', 'Операция', 'Валюта',
+                     'Тип финансового инструмента']).agg(
+        price=pd.NamedAgg(column='Цена', aggfunc='mean'),
+        volume=pd.NamedAgg(column='Количество', aggfunc='sum'),
+        nkd=pd.NamedAgg(column='НКД', aggfunc='sum'),
+        sum=pd.NamedAgg(column='Объём сделки', aggfunc='sum'),
+        commission=pd.NamedAgg(column='Комиссия', aggfunc='sum')
     )
     df.reset_index(drop=False, inplace=True)
     df = roe_table_update(df, 0, 3)  # заполнение курса ЦБ по каждой из операций
     broker = 'SBER'
     df.rename(columns={'Дата расчётов' : 'date', 'Код финансового инструмента': 'ticker', 'Операция': 'buy_sell',
-                       'Валюта': 'currency'}, inplace=True)
-    df = df[['date', 'ticker', 'buy_sell', 'currency', 'Price', 'Volume',
-                'Commission', 'Sum', 'NKD', 'ROE_index', 'ROE', 'RUB_sum']]
+                       'Валюта': 'currency', 'Тип финансового инструмента': 'sec_type'}, inplace=True)
+    df = df[['date', 'ticker', 'buy_sell', 'currency', 'price', 'volume',
+             'commission', 'sum', 'nkd', 'sec_type', 'ROE_index', 'ROE', 'RUB_sum']]
     # full_list_of_securities = df['Код финансового инструмента'].unique().tolist()
     exception_arr = ['26208^', 'MOEX', 'RU000A0ZZ547', 'CHMF', 'LSRG', 'MTSS', 'RU000A0JV8Q2', 'RU000A100YD8',
                      'RU000A0JWHA4', 'RU000A0ZYYN4', 'XS1383922876', 'XS1639490918']

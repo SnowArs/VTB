@@ -46,10 +46,10 @@ def ib():
     df2021['Выручка'] = df2021['Выручка'].abs()
     # df2021.loc[df2021['Символ'].endswith['%']] = df2021['Символ'].str.rsplit(' ', 1)
     df2021 = df2021.groupby(['date', 'Символ', 'B/S', 'Валюта']).agg(
-        Price=pd.NamedAgg(column='Цена транзакции', aggfunc='mean'),
-        Volume=pd.NamedAgg(column='Количество', aggfunc='sum'),
-        Commission=pd.NamedAgg(column='Комиссия/плата', aggfunc='sum'),
-        Sum=pd.NamedAgg(column='Выручка', aggfunc='sum')
+        price=pd.NamedAgg(column='Цена транзакции', aggfunc='mean'),
+        volume=pd.NamedAgg(column='Количество', aggfunc='sum'),
+        commission=pd.NamedAgg(column='Комиссия/плата', aggfunc='sum'),
+        sum=pd.NamedAgg(column='Выручка', aggfunc='sum')
     )
     df2021.reset_index(drop=False, inplace=True)
     df2021 = roe_table_update(df2021, 0, 3)
@@ -57,7 +57,7 @@ def ib():
     df2020 = pd.read_excel('BD\\IB\\ib2020.xls')
     df = df2020.append(df2021, ignore_index=True, sort=True)
     df = df.drop(df.loc[(df['B/S'] == '') | (df['B/S'].isna())].index)
-    df = df[['date', 'Символ', 'B/S', 'Валюта', 'Price', 'Volume', 'Commission', 'Sum', 'ROE_index', 'ROE', 'RUB_sum']]
+    df = df[['date', 'Символ', 'B/S', 'Валюта', 'price', 'volume', 'commission', 'sum', 'ROE_index', 'ROE', 'RUB_sum']]
     df.loc[df['Символ'].str.endswith('%'), 'Символ'] = df['Символ'].str.replace(' ', '_')
     df.loc[df['Символ'].str.endswith('%'), 'Символ'] = df['Символ'].str.rsplit('_', 1).str[0]
     df.loc[df['Символ'].str.endswith(' P'), 'Символ'] = df['Символ'].str.replace(' ', '_')
@@ -73,9 +73,9 @@ def ib():
     full_list_of_securities = list(set(full_list_of_securities) ^ set(exception_arr))
     df.rename(columns={'Дата вал.': 'date', 'Символ': 'ticker', 'B/S': 'buy_sell',
                        'Валюта': 'currency'}, inplace=True)
-    df['NKD'] = ''
-    df = df[['date', 'ticker', 'buy_sell', 'currency', 'Price', 'Volume',
-            'Commission', 'Sum', 'NKD', 'ROE_index', 'ROE', 'RUB_sum']]
+    df[['nkd', 'sec_type']] = ''
+    df = df[['date', 'ticker', 'buy_sell', 'currency', 'price', 'volume',
+             'commission', 'sum', 'nkd', 'sec_type', 'ROE_index', 'ROE', 'RUB_sum']]
     df_results = main_func(full_list_of_securities, df, broker)
 
     # проверка, что с остатками правильные бумаги

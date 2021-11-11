@@ -4,6 +4,7 @@ from moex import *
 import class_new
 from func import culc, outstanding_volume_price
 import asynco_new
+import sec_prices_rub
 from prettytable import PrettyTable
 
 warnings.filterwarnings('ignore')
@@ -23,15 +24,22 @@ def append_to_total_profit(ticker, total_combined_profit):
 
 
 def main_func(df, broker, exception_arr=[]):
-    full_list_of_securities_rub = set(df.loc[df.currency == ('RUB' or 'RUR')].ticker)
-    full_list_of_securities = set(df['ticker']) ^ full_list_of_securities_rub
-    full_list_of_securities.sort()
-    list_with_names_and_prices = asynco_new.main(full_list_of_securities)
+    df_for_execution = df.loc[~df.ticker.isin(exception_arr)]
+    # выделяем отдельно рублевые бумаги для получения цены через сайт МБ
+    full_list_of_securities_rub = set(df_for_execution.loc[df.currency.str.contains('RUB','RUR')].ticker)
+    # выделяем отдельно валютные бумаги для получения цены через сайт yahoo (отдельная история с GPB и HKD)
+    full_list_of_securities_non_rub = set(df_for_execution.loc[~df.currency.str.contains('RUB','RUR')].ticker)
+    df_sec_prices_rub = pd.DataFrame(sec_prices_rub.current_prices(list(full_list_of_securities_rub)),
+                                     columns=['ticker', 'name', 'cur_price'])
+    list_with_names_and_prices_non_rub = asynco_new.main(full_list_of_securities_non_rub)
+    # отдельно по валюте
     currencies_exchange = asynco_new.main(CURRENCIES)
-    df_with_names_and_prices = pd.DataFrame(list_with_names_and_prices, columns=['ticker', 'name', 'price'])
+    df_sec_prices_non_rub = pd.DataFrame(list_with_names_and_prices_non_rub, columns=['ticker', 'name', 'cur_price'])
     df_with_currencies_exchange = pd.DataFrame(currencies_exchange, columns=['currency', 'name', 'ROE'])
-
-
+    # могут быть повторяющиеся тикеры, поэтому надо сложить
+    full_list_of_securities = list(full_list_of_securities_rub) + list(full_list_of_securities_non_rub)
+    df_full = df_sec_prices_rub.append(df_sec_prices_non_rub)
+    df_for_execution = df_for_execution.merge(df_full, how='outer', on='ticker', sort=True)
 
     # сознадние таблицы вывода
     mytable = PrettyTable()
@@ -54,7 +62,7 @@ def main_func(df, broker, exception_arr=[]):
         print(f'processing {security}')
         df_for_security = df.loc[df.iloc[:, 1] == security].reset_index(drop=True)
         security_name_and_price = \
-            list(df_with_names_and_prices.loc[df_with_names_and_prices.ticker == security].values[0])
+            list(df_for_execution.loc[df_for_execution.ticker == security].values[0])
 
         if df_for_security.empty:  # проверка на пустую таблицу по инструменту
             print(f'пустая датафрейм для  {security}')
