@@ -2,6 +2,7 @@ import pandas as pd
 import warnings
 from main import main_func
 from VTB_NEW.modules import roe_table_update
+import settings_for_sec
 
 warnings.filterwarnings('ignore')
 
@@ -12,17 +13,19 @@ def vtb():
     df['Код инструмента'] = df['Код инструмента'].str.replace('-', '_').str.split('_').str[0]
     # так как сделики в течении дня происходят разными строкам требуется группировка
     df = df.groupby(['Дата вал.', 'Код инструмента', 'B/S', 'Валюта']).agg(
-        Price=pd.NamedAgg(column='Цена', aggfunc='mean'),
-        Volume=pd.NamedAgg(column='Кол-во', aggfunc='sum'),
-        NKD=pd.NamedAgg(column='НКД', aggfunc='sum'),
-        Sum=pd.NamedAgg(column='Объем', aggfunc='sum')
+        price=pd.NamedAgg(column='Цена', aggfunc='mean'),
+        volume=pd.NamedAgg(column='Кол-во', aggfunc='sum'),
+        nkd=pd.NamedAgg(column='НКД', aggfunc='sum'),
+        sum=pd.NamedAgg(column='Объем', aggfunc='sum')
     )
     df.reset_index(drop=False, inplace=True)
     df = roe_table_update(df, 0, 3)  # заполнение курса ЦБ по каждой из операций
-    broker = 'VTB'
-    full_list_of_securities = df['Код инструмента'].unique().tolist()
-    # full_list_of_securities = ['XRX']
-    main_func(full_list_of_securities, df, broker)
+    df.rename(columns={'Дата вал.': 'date', 'Код инструмента': 'ticker', 'B/S': 'buy_sell',
+                       'Валюта': 'currency'}, inplace=True)
+    df['broker'] = 'VTB'
+    df[['sec_type', 'commission']] = ''
+    df = df[settings_for_sec.df_fields()]
+    main_func(df)
     return
 
 

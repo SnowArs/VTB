@@ -54,7 +54,7 @@ def roe_table_update(df, date_column, currency_column):
     df_roe = df_roe.drop_duplicates('ROE_index', ignore_index=True)
     df_roe.to_csv('BD\\roe_table.csv', index=False)
 
-    df['RUB_sum'] = df['Sum'] * df['ROE']
+    df['RUB_sum'] = df['sum'] * df['ROE']
     df = df.astype({'ROE': 'float', 'RUB_sum': 'float'})
     return df
 

@@ -4,7 +4,6 @@ import math
 import apimoex
 import pandas as pd
 from tradingview_ta import TA_Handler, Interval, Exchange
-from settings import settings
 import BD
 import numpy as np
 
@@ -91,32 +90,27 @@ class Calculations:
 
 
 class Ticker(Calculations):
-    def __init__(self, security_df, broker):
-        self.settings = settings(broker)
+    def __init__(self, security_df, df_with_currencies_exchange ):
         self.df = security_df
-        self.raw_name = security_df.iloc[:, self.settings['name']][0]
-        self.currency = security_df['Валюта'][0]
-        self.broker = broker
+        self.raw_name = security_df['ticker'][0]
+        self.currency = security_df['currency'][0]
+        self.broker = security_df['broker'][0]
+        self.full_name = security_df['name'][0]
+        self.type = security_df['sec_type'][0]
+
         self.volume_mult = 1
         self.bonds_mult = 1
-        self.full_name = ''
-        self.type = ''
         self.board = ''
         self.market = ''
         self.commission = self.commission()
         self.average_price_usd = 'N/A'
         self.name = self.security_name()
-        self.index_sell_deals = \
-            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code']].index.array
-        self.index_buy_deals = \
-            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['buy_code']].index.array
+        self.index_sell_deals = security_df.loc[security_df['buy_sell'] == 'Продажа'].index.array
+        self.index_buy_deals = security_df.loc[security_df['buy_sell'] == 'Покупка'].index.array
         self.buy_volume_array = np.array(
-            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['buy_code'], 'Volume'].array) \
-                                * self.volume_mult
+            security_df.loc[security_df['buy_sell'] == 'Покупка', 'volume'].array) * self.volume_mult
         self.sale_volume_array = np.array(
-            security_df.loc[
-                security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code'], 'Volume'].array) \
-                                 * self.volume_mult
+            security_df.loc[security_df['buy_sell'] == 'Продажа', 'volume'].array) * self.volume_mult
 
         self.exchange_to_usd = self.exchange()
         self.average_roe_for_outstanding_volumes = 0
@@ -127,17 +121,10 @@ class Ticker(Calculations):
         self.prof_for_sold_securities = 0
         self.profit_for_outstanding_volumes = 0
         # подсчет количества проданных и купленных бумаг
-        self.total_buy = \
-            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['buy_code'], 'Volume'].sum() \
-            * self.volume_mult
-        self.total_sell = \
-            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code'], 'Volume'].sum() \
-            * self.volume_mult
-        self.buy_sum_for_rub_securities = \
-            security_df.loc[security_df.iloc[:, self.settings['buy_col']] == self.settings['buy_code'], 'RUB_sum'].sum()
-        self.sell_sum_for_rub_securities = \
-            security_df.loc[
-                security_df.iloc[:, self.settings['buy_col']] == self.settings['sell_code'], 'RUB_sum'].sum()
+        self.total_buy = security_df.loc[security_df['buy_sell'] == 'Покупка', 'volume'].sum() * self.volume_mult
+        self.total_sell = security_df.loc[security_df['buy_sell'] == 'Продажа', 'volume'].sum() * self.volume_mult
+        self.buy_sum_for_rub_securities = security_df.loc[security_df['buy_sell'] == 'Покупка', 'RUB_sum'].sum()
+        self.sell_sum_for_rub_securities = security_df.loc[security_df['buy_sell'] == 'Продажа', 'RUB_sum'].sum()
         self.outstanding_volumes = self.total_buy - self.total_sell
         self.current_price = self.get_current_price()  # self.board, self.market, self.bonds_mult)
 

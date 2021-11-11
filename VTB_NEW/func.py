@@ -1,5 +1,5 @@
 import math
-import settings
+import settings_for_sec
 
 
 # подсчет купленных и проданных позиций по принципу FIFO
@@ -79,7 +79,7 @@ def culc(ticker, error_array, prof_per_year_dict, prof_rur_per_year_dict):
 
 # вычисление профита по каждой сделке в зависимости от остатка бумаг
 def profit_calculation(ticker, option, sale_row_number, sold_volume, prof_per_year_dict, profit_rur_per_year_dict, i=0):
-    sets = settings.settings(ticker.broker)
+    sets = settings_for_sec.settings(ticker.broker)
     # print('начал выполнение profit_calculation функции')
     if ticker.broker == 'FRIDOM':
         commission = sold_volume/ticker.total_buy * ticker.commission * ticker.df['ROE'][sale_row_number]
