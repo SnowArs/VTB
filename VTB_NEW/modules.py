@@ -30,8 +30,9 @@ def roe_table_update(df, date_column, currency_column):
 
     if os.path.exists('BD\\roe_table.csv'):
         df_roe = pd.read_csv('BD\\roe_table.csv', usecols=['ROE_index', 'ROE'])
+        #п
         df = df.merge(df_roe, how='left', left_on='ROE_index', right_on='ROE_index')
-        df.loc[df.iloc[:, currency_column].str.contains('RUR' or 'RUB'), 'ROE'] = 1
+        df.loc[df.iloc[:, currency_column].str.contains('RUR'or'RUB'), 'ROE'] = 1
         if df.loc[df['ROE'].isna()].empty:
             print('ROE по всем датам проставленно')
         else:
@@ -53,7 +54,7 @@ def roe_table_update(df, date_column, currency_column):
     df_roe = df_roe.drop_duplicates('ROE_index', ignore_index=True)
     df_roe.to_csv('BD\\roe_table.csv', index=False)
 
-    df['RUB_sum'] = df['Sum'] * df['ROE']
+    df['RUB_sum'] = df['sum'] * df['ROE']
     df = df.astype({'ROE': 'float', 'RUB_sum': 'float'})
     return df
 

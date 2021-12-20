@@ -3,7 +3,7 @@ import csv
 from VTB_NEW.modules import roe_table_update
 from main import *
 import warnings
-import settings
+import settings_for_sec
 warnings.filterwarnings('ignore')
 
 
@@ -53,11 +53,12 @@ def ib():
     )
     df2021.reset_index(drop=False, inplace=True)
     df2021 = roe_table_update(df2021, 0, 3)
-    broker = 'IB'
     df2020 = pd.read_excel('BD\\IB\\ib2020.xls')
     df = df2020.append(df2021, ignore_index=True, sort=True)
     df = df.drop(df.loc[(df['B/S'] == '') | (df['B/S'].isna())].index)
     df = df[['date', 'Символ', 'B/S', 'Валюта', 'price', 'volume', 'commission', 'sum', 'ROE_index', 'ROE', 'RUB_sum']]
+    df.loc[df['B/S'].str.contains('O'), 'B/S'] = df['B/S'].str.replace('O', 'Покупка')
+    df.loc[df['B/S'].str.contains('C'), 'B/S'] = df['B/S'].str.replace('C', 'Продажа')
     df.loc[df['Символ'].str.endswith('%'), 'Символ'] = df['Символ'].str.replace(' ', '_')
     df.loc[df['Символ'].str.endswith('%'), 'Символ'] = df['Символ'].str.rsplit('_', 1).str[0]
     df.loc[df['Символ'].str.endswith(' P'), 'Символ'] = df['Символ'].str.replace(' ', '_')
@@ -66,17 +67,14 @@ def ib():
 
     df.sort_values(by=['Символ', 'date'], inplace=True)
     df.reset_index(drop=True, inplace=True)
-    full_list_of_securities = df.iloc[:, 1].unique().tolist()
     exception_arr = ['OXY.WAR', 'WPG', 'SCO']
-    # full_list_of_securities = ['MAC']
     # exception_arr = []
-    full_list_of_securities = list(set(full_list_of_securities) ^ set(exception_arr))
+    df['broker'] = 'IB'
     df.rename(columns={'Дата вал.': 'date', 'Символ': 'ticker', 'B/S': 'buy_sell',
                        'Валюта': 'currency'}, inplace=True)
     df[['nkd', 'sec_type']] = ''
-    df = df[['date', 'ticker', 'buy_sell', 'currency', 'price', 'volume',
-             'commission', 'sum', 'nkd', 'sec_type', 'ROE_index', 'ROE', 'RUB_sum']]
-    df_results = main_func(full_list_of_securities, df, broker)
+    df = df[settings_for_sec.df_fields()]
+    df_results = main_func(df, exception_arr)
 
     # проверка, что с остатками правильные бумаги
     df_results = df_results.loc[df_results['Остаток'] > 0]

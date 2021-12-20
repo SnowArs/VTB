@@ -2,6 +2,7 @@ import pandas as pd
 import warnings
 from main import main_func
 from VTB_NEW.modules import roe_table_update
+import settings_for_sec
 
 warnings.filterwarnings('ignore')
 
@@ -19,13 +20,12 @@ def vtb():
     )
     df.reset_index(drop=False, inplace=True)
     df = roe_table_update(df, 0, 3)  # заполнение курса ЦБ по каждой из операций
-    broker = 'VTB'
-    df[['sec_type']] = ''
-    df = df[['date', 'ticker', 'buy_sell', 'currency', 'price', 'volume',
-             'commission', 'sum', 'nkd', 'sec_type', 'ROE_index', 'ROE', 'RUB_sum']]
-    full_list_of_securities = df['Код инструмента'].unique().tolist()
-    # full_list_of_securities = ['CHMF']
-    main_func(full_list_of_securities, df, broker)
+    df.rename(columns={'Дата вал.': 'date', 'Код инструмента': 'ticker', 'B/S': 'buy_sell',
+                       'Валюта': 'currency'}, inplace=True)
+    df['broker'] = 'VTB'
+    df[['sec_type', 'commission']] = ''
+    df = df[settings_for_sec.df_fields()]
+    main_func(df)
     return
 
 
