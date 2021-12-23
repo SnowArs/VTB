@@ -26,22 +26,37 @@ def append_to_total_profit(ticker, total_combined_profit):
 
 
 def main_func(df, exception_arr=[]):
-    df_for_execution = df.loc[~df.ticker.isin(exception_arr)]
+    df_for_execution = df.loc[~df.ticker.isin(exception_arr)].reset_index(drop=True)
+
+
     # выделяем отдельно рублевые бумаги для получения цены через сайт МБ
-    full_list_of_securities_rub = set(df_for_execution.loc[df.currency.str.contains('RUB','RUR')].ticker)
-    # выделяем отдельно валютные бумаги для получения цены через сайт yahoo (отдельная история с GPB и HKD)
-    full_list_of_securities_non_rub = set(df_for_execution.loc[~df.currency.str.contains('RUB','RUR')].ticker)
+    full_list_of_securities_rub = set(df_for_execution.loc[df_for_execution.currency.str.contains('RUB|RUR')].ticker)
     df_sec_prices_rub = pd.DataFrame(sec_prices_rub.current_prices(list(full_list_of_securities_rub)),
                                      columns=['ticker', 'name', 'cur_price'])
+    # выделяем отдельно валютные бумаги для получения цены через сайт yahoo (отдельная история с GBP и HKD)
+    full_list_of_securities_non_rub = set(df_for_execution.loc[~df_for_execution.currency.str.contains('RUB|RUR')].
+                                          ticker)
     list_with_names_and_prices_non_rub = asynco_new.main(full_list_of_securities_non_rub)
-    # отдельно по валюте
-    currencies_exchange = asynco_new.main(CURRENCIES)
     df_sec_prices_non_rub = pd.DataFrame(list_with_names_and_prices_non_rub, columns=['ticker', 'name', 'cur_price'])
+    # отдельно DF по валюте
+    currencies_exchange = asynco_new.main(CURRENCIES)
     df_with_currencies_exchange = pd.DataFrame(currencies_exchange, columns=['currency', 'name', 'ROE'])
     # могут быть повторяющиеся тикеры, поэтому надо сложить
     full_list_of_securities = list(full_list_of_securities_rub) + list(full_list_of_securities_non_rub)
     df_full = df_sec_prices_rub.append(df_sec_prices_non_rub)
     df_for_execution = df_for_execution.merge(df_full, how='outer', on='ticker', sort=True)
+    df_for_execution = df_for_execution.astype({'cur_price': 'float'})
+    df_without_name_and_prices = df_for_execution.loc[df_for_execution.name == '']
+
+    for index, row in df_without_name_and_prices.iterrows():
+        name = class_new.Ticker.security_name(row)
+        print(name)
+        if name == row.ticker:
+            continue
+        else:
+            ticker, name, price = asynco_new.main([name])[0]
+            print(name)
+        # df_for_execution['exec_ticker'] = ''
 
     # сознадние таблицы вывода
     mytable = PrettyTable()
@@ -57,7 +72,7 @@ def main_func(df, exception_arr=[]):
     """"" 
     2/ по каждой бумаге в портфеле производится подсчет показателей прибыльности
     """""
-    for security in sorted(full_list_of_securities):
+    for security in sorted(full_list_of_securities):#['RU000A102TR4']
         print(f'processing {security}')
         df_for_security = df_for_execution.loc[df_for_execution.ticker == security].reset_index(drop=True)
         # security_name_and_price = \
@@ -134,18 +149,19 @@ def main_func(df, exception_arr=[]):
             total_combined_profit = append_to_total_profit(ticker, total_combined_profit)
 
     path_to_save = 'BD\\results_'
-    formula_list = {'df': pd.DataFrame(), 'arr': array_with_results, 'name': broker, 'path': path_to_save,
-                    'columns': field_names}
+    formula_list = {'df': pd.DataFrame(), 'arr': array_with_results, 'name': ticker.broker, 'path': path_to_save,
+                    'columns': settings_for_sec.pretty_table_fields()}
     df_results = excel_saving(**formula_list)  # сохранение для иностранных бумаг
 
     # сохранение позиций с остаткоми
     path_to_save = 'BD\\results_with_volumes'
     df_results = df_results.loc[df_results['Остаток'] > 0]
-    formula_list = {'df': df_results, 'arr': [], 'name': broker, 'path': path_to_save, 'columns': field_names}
+    formula_list = {'df': df_results, 'arr': [], 'name': ticker.broker, 'path': path_to_save,
+                    'columns': settings_for_sec.pretty_table_fields()}
     df_results = excel_saving(**formula_list)
 
     errors_df = pd.DataFrame(error_arr)
-    errors_df.to_excel(f'BD/ERRORS_{broker}.xls')
+    errors_df.to_excel(f'BD/ERRORS_{ticker.broker}.xls')
 
     print()
     print(mytable)

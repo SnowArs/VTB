@@ -14,7 +14,8 @@ async def fetch_price(
         ticker: str, client: httpx.AsyncClient
 ) -> Tuple[str, Decimal]:
     print(f"Making request for {ticker} price")
-    response = await client.get(YAHOO_FINANCE_URL_ADV.format(ticker))
+    # timeout = httpx.Timeout(10.0, read_timeout=None)
+    response = await client.get(YAHOO_FINANCE_URL_ADV.format(ticker), timeout=10.0)
     print(f"Received results for {ticker}")
     try:
         price = response.json()["quoteSummary"]["result"][0]["price"]["regularMarketPrice"]['raw']

@@ -1,14 +1,16 @@
 def df_fields():
     fields = ['date', 'ticker', 'buy_sell', 'currency', 'price', 'volume',
-                'commission', 'sum', 'nkd', 'sec_type', 'broker', 'ROE_index', 'ROE', 'RUB_sum']
+              'commission', 'sum', 'nkd', 'sec_type', 'broker', 'ROE_index', 'ROE', 'RUB_sum']
     return fields
 
 
 def pretty_table_fields():
     field_ = ['Тикер', 'Куплено', 'Продано', 'Остаток', 'заф прибыль РУБ', 'заф прибыль, USD ', 'средняя цена',
-                   'текущая цена', 'потенциальная прибыль', 'общая прибыль', 'средний ROE', 'брокер', 'валюта',
-                   'полное название', 'тип бумаги']
+              'текущая цена', 'потенциальная прибыль', 'общая прибыль', 'средний ROE', 'брокер', 'валюта',
+              'полное название', 'тип бумаги']
+
     return field_
+
 
 def settings(broker):
     if broker == 'IB':
