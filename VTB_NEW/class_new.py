@@ -97,13 +97,13 @@ class Ticker(Calculations):
         self.broker = security_df['broker'][0]
         self.full_name = security_df['name'][0]
         self.type = security_df['sec_type'][0]
-        self.current_price = security_df['cur_price'][0]
         self.volume_mult = 1
         self.bonds_mult = 1
         self.board = ''
         self.market = ''
         self.name = self.security_name()
         self.commission = self.commission()
+        self.current_price = security_df['cur_price'][0] * self.bonds_mult
         self.average_price_usd = 'N/A'
         # self.corrected_name_to_get_price = self.security_name()
         self.index_sell_deals = security_df.loc[security_df['buy_sell'] == 'Продажа'].index.array
@@ -175,10 +175,7 @@ class Ticker(Calculations):
             if len(stock_name) > 5:
                 self.board = 'TQCB'
                 self.market = 'bonds'
-                if self.broker == 'VTB':
-                    self.bonds_mult = 1
-                else:
-                    self.bonds_mult = 10
+                self.bonds_mult = 10
                 self.sec_type = 'Российские облигации'
             else:
                 self.board = 'TQBR'

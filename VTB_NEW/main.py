@@ -15,8 +15,22 @@ CURRENCIES = ['RUBUSD=X', 'EURUSD=X', 'GBPUSD=X', 'HKDUSD=X']
 
 def append_to_total_profit(ticker, total_combined_profit):
     if ticker.full_profit != 'N/A':
-        total_combined_profit += ticker.full_profit
+        total_combined_profit += ticker.prof_for_sold_securities
     return total_combined_profit
+
+
+#печать таблицы
+def output(table, tot_combined_profit, prof_per_year_dct, prof_rub_per_year_dct):
+    print()
+    print(table)
+    print(f'общая прибыль по всем бумагам в USD до уплаты налогов: {int(tot_combined_profit)}')
+
+    print(f'year 2020 - profit от закрытых сделок:  {round(sum(prof_per_year_dct["2020"]), 2)}, '
+          f'year 2021 - profit от закрытых сделок: {round(sum(prof_per_year_dct["2021"]), 2)} ')
+
+    print(f'year 2020 - НДФЛ по закрытым сделкам: {round(sum(prof_rub_per_year_dct["2020"]) * 0.15, 2)}, '
+          f'year 2021 - НДФЛ по закрытым сделкам: {round(sum(prof_rub_per_year_dct["2021"]) * 0.15, 2)} ')
+    return None
 
 
 """"" 
@@ -25,7 +39,7 @@ def append_to_total_profit(ticker, total_combined_profit):
 """""
 
 
-def main_func(df, exception_arr=[]):
+def main_func(df, path, exception_arr=[]):
     df_for_execution = df.loc[~df.ticker.isin(exception_arr)].reset_index(drop=True)
 
 
@@ -46,17 +60,17 @@ def main_func(df, exception_arr=[]):
     df_full = df_sec_prices_rub.append(df_sec_prices_non_rub)
     df_for_execution = df_for_execution.merge(df_full, how='outer', on='ticker', sort=True)
     df_for_execution = df_for_execution.astype({'cur_price': 'float'})
-    df_without_name_and_prices = df_for_execution.loc[df_for_execution.name == '']
+    # df_without_name_and_prices = df_for_execution.loc[df_for_execution.name == '']
 
-    for index, row in df_without_name_and_prices.iterrows():
-        name = class_new.Ticker.security_name(row)
-        print(name)
-        if name == row.ticker:
-            continue
-        else:
-            ticker, name, price = asynco_new.main([name])[0]
-            print(name)
-        # df_for_execution['exec_ticker'] = ''
+    # for index, row in df_without_name_and_prices.iterrows():
+    #     name = class_new.Ticker.security_name(row)
+    #     print(name)
+    #     if name == row.ticker:
+    #         continue
+    #     else:
+    #         ticker, name, price = asynco_new.main([name])[0]
+    #         print(name)
+    #     # df_for_execution['exec_ticker'] = ''
 
     # сознадние таблицы вывода
     mytable = PrettyTable()
@@ -66,14 +80,15 @@ def main_func(df, exception_arr=[]):
     total_combined_profit = 0
     error_arr = []
     array_with_results = []
-    prof_per_year_dict = {'2018': [], '2019': [], '2020': [], '2021': []}
-    prof_rub_per_year_dict = {'2018': [], '2019': [], '2020': [], '2021': []}
+    prof_per_year_dict = {'2018': [], '2019': [], '2020': [], '2021': [], '2022': []}
+    prof_rub_per_year_dict = {'2018': [], '2019': [], '2020': [], '2021': [], '2022': []}
 
     """"" 
     2/ по каждой бумаге в портфеле производится подсчет показателей прибыльности
     """""
-    for security in sorted(full_list_of_securities):#['RU000A102TR4']
-        print(f'processing {security}')
+    # for security in ['RU000A102TR4']:
+    for security in sorted(full_list_of_securities):
+        # print(f'processing {security}')
         df_for_security = df_for_execution.loc[df_for_execution.ticker == security].reset_index(drop=True)
         # security_name_and_price = \
         #     list(df_for_execution.loc[df_for_execution.ticker == security].values[0])
@@ -124,7 +139,7 @@ def main_func(df, exception_arr=[]):
             # вычисление средней цены  оставшихся бумаг в рублях и валюте
             ticker, error_arr = outstanding_volume_price(ticker, error_arr)
             # сохранение для более простой проверки правильности расчетов
-            path_to_save = 'calc\\'
+            path_to_save = path + '\\calc\\'
             formula_list = {'df': ticker.df, 'arr': [], 'name': ticker.ticker, 'path': path_to_save, 'columns': []}
             excel_saving(**formula_list)
             # заполнение таблицы
@@ -147,31 +162,30 @@ def main_func(df, exception_arr=[]):
             mytable.add_row(TABLE_COLUMNS)
             array_with_results.append(TABLE_COLUMNS)
             total_combined_profit = append_to_total_profit(ticker, total_combined_profit)
+            # print(ticker.name, round(ticker.prof_for_sold_securities, 2))
+            # print(ticker.name, total_combined_profit)
 
-    path_to_save = 'BD\\results_'
+    # вывод результато
+    output(mytable, total_combined_profit, prof_per_year_dict, prof_rub_per_year_dict)
+    #сохранение результатов
+    path_to_save = path + '_results_'
     formula_list = {'df': pd.DataFrame(), 'arr': array_with_results, 'name': ticker.broker, 'path': path_to_save,
                     'columns': settings_for_sec.pretty_table_fields()}
     df_results = excel_saving(**formula_list)  # сохранение для иностранных бумаг
 
     # сохранение позиций с остаткоми
-    path_to_save = 'BD\\results_with_volumes'
+    path_to_save = path + '_results_with_volumes'
     df_results = df_results.loc[df_results['Остаток'] > 0]
     formula_list = {'df': df_results, 'arr': [], 'name': ticker.broker, 'path': path_to_save,
                     'columns': settings_for_sec.pretty_table_fields()}
     df_results = excel_saving(**formula_list)
 
     errors_df = pd.DataFrame(error_arr)
-    errors_df.to_excel(f'BD/ERRORS_{ticker.broker}.xls')
+    errors_df.to_excel(path + f'ERRORS_{ticker.broker}.xls')
 
-    print()
-    print(mytable)
-    print(f'общая прибыль по всем бумагам в USD до уплаты налогов: {int(total_combined_profit)}')
 
-    print(f'year 2020 - profit от закрытых сделок -  {round(sum(prof_per_year_dict["2020"]), 2)}, '
-          f'year 2021 - profit от закрытых сделок - {round(sum(prof_per_year_dict["2021"]), 2)} ')
 
-    print(f'year 2020 - НДФЛ по закрытым сделкам - {round(sum(prof_rub_per_year_dict["2020"]) * 0.15, 2)}, '
-          f'year 2021 - НДФЛ по закрытым сделкам {round(sum(prof_rub_per_year_dict["2021"]) * 0.15, 2)} ')
+
 
     return df_results
 

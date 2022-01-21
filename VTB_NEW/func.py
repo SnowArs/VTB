@@ -91,24 +91,23 @@ def profit_calculation(ticker, option, sale_row_number, sold_volume, prof_per_ye
     if option == 0:  # разница бумаг 0 или положительная
         prof_rub = ticker.df['RUB_sum'][sale_row_number] - \
                    sold_volume * ticker.df['ROE'][ticker.index_buy_deals[0]] * \
-                   ticker.df['price'][ticker.index_buy_deals[0]] * ticker.bonds_mult - commission_rub
+                   ticker.df['price'][ticker.index_buy_deals[0]] - commission_rub #* ticker.bonds_mult
         prof_usd = ticker.df['sum'][sale_row_number] - \
-                   sold_volume * ticker.df['price'][ticker.index_buy_deals[0]] * ticker.bonds_mult - commission
+                   sold_volume * ticker.df['price'][ticker.index_buy_deals[0]] - commission # * ticker.bonds_mult
 
     elif option == 1:  # разница бумаг отрицательная, первая итерация
         buy_row_number = ticker.index_buy_deals[i]
         prof_rub = sold_volume / ticker.df['volume'][sale_row_number] * ticker.df['RUB_sum'][sale_row_number] - \
-                   sold_volume * ticker.df['ROE'][buy_row_number] * ticker.df['price'][buy_row_number] * \
-                   ticker.bonds_mult - commission_rub
+                   sold_volume * ticker.df['ROE'][buy_row_number] * ticker.df['price'][buy_row_number] - commission_rub # * \ticker.bonds_mult
         prof_usd = sold_volume * ticker.df['price'][sale_row_number] - sold_volume * \
-                   ticker.df['price'][buy_row_number] * ticker.bonds_mult - commission
+                   ticker.df['price'][buy_row_number] - commission #* ticker.bonds_mult
 
     elif option == 2:  # разница бумаг отрицательная, следующие  итерации
         prof_rub = sold_volume / ticker.df['volume'][sale_row_number] * ticker.df['RUB_sum'][sale_row_number] - \
                    sold_volume * ticker.df.iloc[ticker.index_buy_deals[i]]['ROE'] * \
-                   ticker.df.iloc[ticker.index_buy_deals[i]]['price'] * ticker.bonds_mult - commission_rub
+                   ticker.df.iloc[ticker.index_buy_deals[i]]['price'] - commission_rub #* ticker.bonds_mult
         prof_usd = sold_volume * ticker.df['price'][sale_row_number] - \
-                   sold_volume * ticker.df.iloc[ticker.index_buy_deals[i]]['price'] * ticker.bonds_mult - commission
+                   sold_volume * ticker.df.iloc[ticker.index_buy_deals[i]]['price'] - commission # * ticker.bonds_mult
 
     if ticker.currency in ['RUB', 'RUR']:
         prof_usd = prof_rub
@@ -149,8 +148,7 @@ def outstanding_volume_price(ticker, error_array):
             ticker.average_price_rub = round(sum_in_rub / sum(ticker.buy_volume_array), 2)
             try:
                 ticker.profit_for_outstanding_volumes = round(((ticker.current_price - ticker.average_price_usd) *
-                                                               ticker.outstanding_volumes * ticker.exchange_to_usd *
-                                                               ticker.bonds_mult), 2)
+                                                               ticker.outstanding_volumes * ticker.exchange_to_usd), 2)
                 ticker.full_profit = round(ticker.prof_for_sold_securities + ticker.profit_for_outstanding_volumes, 2)
             except:
                 ticker.profit_for_outstanding_volumes = 'N/A'
