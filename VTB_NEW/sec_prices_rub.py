@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 import httplib2
+from tradingview_ta import TA_Handler, Interval, Exchange
 
 
 def current_prices(full_list_of_securities_rub):
@@ -31,6 +32,19 @@ def current_prices(full_list_of_securities_rub):
         prices_rur_arr.append([no_data_ticker, '', 0])
 
     return prices_rur_arr
+
+
+def hkd_security_name_and_prices(security):
+    security_data = TA_Handler(
+        symbol=security,
+        screener="hongkong",
+        exchange="HKEX",
+        interval=Interval.INTERVAL_1_DAY
+    )
+    # print(self.name, security_data.get_analysis().indicators['close'])
+    current_price = round(security_data.get_analysis().indicators['close'], 2)
+
+    return current_price
 
 
 if __name__ == "__main__":

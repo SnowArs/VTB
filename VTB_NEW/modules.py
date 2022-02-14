@@ -1,11 +1,18 @@
 import datetime as dt
 import os
-
-import pandas
 import pandas as pd
-
 from VTB_NEW.moex import fill_roe
+import socket
 
+
+def path_search():
+    if socket.gethostname() == 'TABLET-LQ7125EI':
+        main_dir = r'C:\Users\Ttt\OneDrive\Документы\securities_execution'
+        # REPORTS_DIR = r'C:\Users\Ttt\OneDrive\Документы\WB_execution\weekly_reports_' + f'{broker}'
+    else:
+        main_dir = r'C:\Users\membe\OneDrive\Документы\securities_execution'
+        # REPORTS_DIR = r'C:\Users\membe\OneDrive\Документы\WB_execution\weekly_reports_' + f'{broker}'
+    return main_dir
 
 def find_latest_file(path):
     files = os.listdir(path)
