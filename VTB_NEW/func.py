@@ -91,29 +91,32 @@ def profit_calculation(ticker, option, sale_row_number, sold_volume, prof_per_ye
     if option == 0:  # разница бумаг 0 или положительная
         prof_rub = ticker.df['RUB_sum'][sale_row_number] - \
                    sold_volume * ticker.df['ROE'][ticker.index_buy_deals[0]] * \
-                   ticker.df['price'][ticker.index_buy_deals[0]] - commission_rub #* ticker.bonds_mult
+                   ticker.df['price'][ticker.index_buy_deals[0]] * ticker.bonds_mult - commission_rub
         prof_usd = ticker.df['sum'][sale_row_number] - \
-                   sold_volume * ticker.df['price'][ticker.index_buy_deals[0]] - commission # * ticker.bonds_mult
+                   sold_volume * ticker.df['price'][ticker.index_buy_deals[0]] * ticker.bonds_mult - commission
 
     elif option == 1:  # разница бумаг отрицательная, первая итерация
         buy_row_number = ticker.index_buy_deals[i]
         prof_rub = sold_volume / ticker.df['volume'][sale_row_number] * ticker.df['RUB_sum'][sale_row_number] - \
-                   sold_volume * ticker.df['ROE'][buy_row_number] * ticker.df['price'][buy_row_number] - commission_rub # * \ticker.bonds_mult
+                   sold_volume * ticker.df['ROE'][buy_row_number] * ticker.df['price'][buy_row_number] *\
+                   ticker.bonds_mult - commission_rub # * \ticker.bonds_mult
         prof_usd = sold_volume * ticker.df['price'][sale_row_number] - sold_volume * \
                    ticker.df['price'][buy_row_number] - commission #* ticker.bonds_mult
 
     elif option == 2:  # разница бумаг отрицательная, следующие  итерации
         prof_rub = sold_volume / ticker.df['volume'][sale_row_number] * ticker.df['RUB_sum'][sale_row_number] - \
                    sold_volume * ticker.df.iloc[ticker.index_buy_deals[i]]['ROE'] * \
-                   ticker.df.iloc[ticker.index_buy_deals[i]]['price'] - commission_rub #* ticker.bonds_mult
+                   ticker.df.iloc[ticker.index_buy_deals[i]]['price'] * ticker.bonds_mult - commission_rub #* ticker.bonds_mult
         prof_usd = sold_volume * ticker.df['price'][sale_row_number] - \
                    sold_volume * ticker.df.iloc[ticker.index_buy_deals[i]]['price'] - commission # * ticker.bonds_mult
 
     if ticker.currency in ['RUB', 'RUR']:
-        prof_usd = prof_rub
-
+        prof_usd = prof_rub * ticker.exchange_to_usd
+        ticker.prof_for_sold_securities += prof_usd
+    else:
+        ticker.prof_for_sold_securities += prof_usd * ticker.exchange_to_usd
     ticker.prof_for_sold_securities_rub += prof_rub
-    ticker.prof_for_sold_securities += prof_usd * ticker.exchange_to_usd
+
     row_to_fill = sale_row_number + i
     # проверка чтобы не было перезаписи вычислений в таблице каждой бумаги, чтобы проще делать проверку вычислений
     if ticker.filled_row >= row_to_fill:
@@ -127,8 +130,10 @@ def profit_calculation(ticker, option, sale_row_number, sold_volume, prof_per_ye
         ticker.df['prof_usd'][row_to_fill] = prof_usd
     ticker.filled_row = row_to_fill
     # print('закончил profit_calculation')
+    # Заполнение прибыли по году
     prof_per_year_dict[str(ticker.df.iloc[:, sets['Дата']][sale_row_number].year)].append(round(prof_usd, 2))
     profit_rub_per_year_dict[str(ticker.df.iloc[:, sets['Дата']][sale_row_number].year)].append(round(prof_rub, 2))
+
     return ticker, prof_per_year_dict, profit_rub_per_year_dict
 
 
@@ -140,8 +145,9 @@ def outstanding_volume_price(ticker, error_array):
     if len(ticker.buy_volume_array) != 0:
         if ticker.current_price != 'N/A':
             for number, line in enumerate(ticker.index_buy_deals):
-                sum_in_usd += ticker.buy_volume_array[number] * ticker.df['price'][line]
-                sum_in_rub += ticker.buy_volume_array[number] * ticker.df['price'][line] * ticker.df['ROE'][line]
+                sum_in_usd += ticker.buy_volume_array[number] * ticker.df['price'][line] * ticker.bonds_mult
+                sum_in_rub += ticker.buy_volume_array[number] * ticker.df['price'][line] * ticker.bonds_mult \
+                              * ticker.df['ROE'][line]
             ticker.average_roe_for_outstanding_volumes = round(sum_in_rub / sum_in_usd, 2)
             ticker.average_price_usd = \
                 round(sum_in_rub / (ticker.average_roe_for_outstanding_volumes * sum(ticker.buy_volume_array)), 2)

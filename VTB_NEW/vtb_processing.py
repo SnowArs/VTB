@@ -7,20 +7,21 @@ import socket
 
 warnings.filterwarnings('ignore')
 
-def path_search(broker_name):
+def path_search():
     if socket.gethostname() == 'TABLET-LQ7125EI':
-        main_dir = r'C:\Users\Ttt\OneDrive\Документы\securities_execution' + f'\{broker_name}'
-        REPORTS_DIR = r'C:\Users\Ttt\OneDrive\Документы\WB_execution\weekly_reports_' + f'{broker_name}'
+        main_dir = r'C:\Users\Ttt\OneDrive\Документы\securities_execution'
+        # REPORTS_DIR = r'C:\Users\Ttt\OneDrive\Документы\WB_execution\weekly_reports_' + f'{broker}'
     else:
-        main_dir = r'C:\Users\membe\OneDrive\Документы\securities_execution\VTB'
-        REPORTS_DIR = r'C:\Users\membe\OneDrive\Документы\WB_execution\weekly_reports_' + f'{broker_name}'
+        main_dir = r'C:\Users\membe\OneDrive\Документы\securities_execution'
+        # REPORTS_DIR = r'C:\Users\membe\OneDrive\Документы\WB_execution\weekly_reports_' + f'{broker}'
     return main_dir
 
 
 def vtb():
     broker = 'VTB'
-    path_to_file = path_search(broker)
-    df = pd.read_excel(f'{path_to_file}\сделки_ВТБ_190122.xls', sheet_name='DealOwnsReport', header=3)
+    path_to_main_dir = path_search()
+    path_to_reports_from_brokers = f'{path_to_main_dir}\{broker}'
+    df = pd.read_excel(path_to_reports_from_brokers + '\сделки_ВТБ_100222.xls', sheet_name='DealOwnsReport', header=3)
     df = df.loc[df['Тип сделки'] == 'Клиентская'].reset_index(drop=True)
     df['Код инструмента'] = df['Код инструмента'].str.replace('-', '_').str.split('_').str[0]
     # так как сделики в течении дня происходят разными строкам требуется группировка
@@ -37,7 +38,7 @@ def vtb():
     df['broker'] = broker
     df[['sec_type', 'commission']] = ''
     df = df[settings_for_sec.df_fields()]
-    main_func(df, path_to_file)
+    main_func(df, path_to_main_dir)
     return
 
 
